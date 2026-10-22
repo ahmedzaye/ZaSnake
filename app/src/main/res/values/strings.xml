@@ -1,4 +1,7 @@
 <resources>
+    <!-- Configure privately before production: Cloud Run https URL and Play Games Web OAuth client id. -->
+    <string name="billing_backend_url" translatable="false">UNCONFIGURED</string>
+    <string name="pgs_web_client_id" translatable="false">UNCONFIGURED</string>
     <!-- Replace with real AdMob IDs and Play Games project ID in your private release config. -->
     <string name="admob_app_id" translatable="false">ca-app-pub-3940256099942544~3347511713</string>
     <string name="admob_rewarded_revive" translatable="false">ca-app-pub-3940256099942544/5224354917</string>
