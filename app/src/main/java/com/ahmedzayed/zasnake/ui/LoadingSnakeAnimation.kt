@@ -35,18 +35,26 @@ import kotlin.math.sin
 @Composable
 internal fun SnakeLoadingScreen(
     background: Color,
-    snakeColor: Color
+    snakeColor: Color,
+    motionEnabled: Boolean
 ) {
-    val transition = rememberInfiniteTransition(label = "snake-loading")
-    val travel by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1600, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "snake-moves-left-to-right"
-    )
+    // Respect the system's "Remove animations" / animator-duration accessibility setting.
+    // When animations are disabled we draw a static snake instead of running a loop.
+    val travel = if (motionEnabled) {
+        val transition = rememberInfiniteTransition(label = "snake-loading")
+        val animatedTravel by transition.animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 1600, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart
+            ),
+            label = "snake-moves-left-to-right"
+        )
+        animatedTravel
+    } else {
+        0.55f
+    }
 
     Box(
         modifier = Modifier.fillMaxSize().background(background),
