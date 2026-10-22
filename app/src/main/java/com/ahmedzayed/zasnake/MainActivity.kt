@@ -14,6 +14,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.core.view.WindowCompat
 import com.ahmedzayed.zasnake.ads.RewardedAds
+import com.ahmedzayed.zasnake.ads.AdConsentManager
 import com.ahmedzayed.zasnake.age.AgeBand
 import com.ahmedzayed.zasnake.age.AgeDecision
 import com.ahmedzayed.zasnake.age.AgeGateRepository
@@ -33,6 +34,8 @@ class MainActivity : ComponentActivity() {
     private var chosenAge by mutableStateOf<AgeDecision?>(null)
     private var playGamesBridge: PlayGamesBridge? = null
     private var rewardedAds: RewardedAds? = null
+    private var adConsentManager: AdConsentManager? = null
+    private var privacyOptionsRequired by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -59,6 +62,8 @@ class MainActivity : ComponentActivity() {
                         viewModel = gameViewModel,
                         playGamesBridge = checkNotNull(playGamesBridge),
                         rewardedAds = rewardedAds,
+                        privacyOptionsRequired = privacyOptionsRequired,
+                        onPrivacyOptions = { adConsentManager?.showPrivacyOptions(::onConsentResult) },
                         onExitApp = { finish() }
                     )
                 }
@@ -74,7 +79,15 @@ class MainActivity : ComponentActivity() {
         playGamesBridge = PlayGamesBridge(this, enabled = olderUser)
         // No mobile-ads init, load or ad request in child mode.
         if (olderUser) {
-            rewardedAds = RewardedAds(this, decision.band).also { it.initialize() }
+            rewardedAds = RewardedAds(this, decision.band)
+            adConsentManager = AdConsentManager(this).also { it.requestOnLaunch(::onConsentResult) }
+        }
+    }
+
+    private fun onConsentResult(allowed: Boolean, optionsRequired: Boolean) {
+        runOnUiThread {
+            privacyOptionsRequired = optionsRequired
+            rewardedAds?.updateConsentAllowance(allowed)
         }
     }
 }

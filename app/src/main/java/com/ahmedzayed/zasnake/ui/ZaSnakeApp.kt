@@ -529,6 +529,8 @@ fun ZaSnakeApp(
     viewModel: GameViewModel,
     playGamesBridge: PlayGamesBridge,
     rewardedAds: RewardedAds?,
+    privacyOptionsRequired: Boolean,
+    onPrivacyOptions: () -> Unit,
     onExitApp: () -> Unit
 ) {
     val modelState by viewModel.uiState
@@ -717,6 +719,8 @@ fun ZaSnakeApp(
                                 AppScreen.SETTINGS -> SettingsScreen(state, onBack = viewModel::navigateHomeFromSubscreen,
                                     onSettingsChange = viewModel::changeSettings,
                                     onUpdatePlayerName = viewModel::updatePlayerName,
+                                    privacyOptionsRequired = privacyOptionsRequired,
+                                    onPrivacyOptions = onPrivacyOptions,
                                     playGamesAllowed = playGamesBridge.isAllowedByAge(),
                                     playGamesConfigured = playGamesBridge.isConfigured(),
                                     onRequestPlayGamesSignIn = {
@@ -1648,6 +1652,8 @@ private fun SettingsScreen(
     onBack: () -> Unit,
     onSettingsChange: (AppSettings) -> Unit,
     onUpdatePlayerName: (String) -> Boolean,
+    privacyOptionsRequired: Boolean,
+    onPrivacyOptions: () -> Unit,
     playGamesAllowed: Boolean,
     playGamesConfigured: Boolean,
     onRequestPlayGamesSignIn: () -> Unit
@@ -1759,6 +1765,24 @@ private fun SettingsScreen(
                                 }) { Text(tx(lang, "name_edit")) }
                             }
                             Text(tx(lang, "player_name_local_hint"), color = Muted, fontSize = 12.sp)
+                        }
+                    }
+                    if (privacyOptionsRequired) {
+                        item {
+                            SettingsPanel {
+                                SettingHeading(
+                                    if (lang == "ar") "خصوصية الإعلانات" else "Ad privacy",
+                                    Icons.Rounded.Lock
+                                )
+                                Text(
+                                    if (lang == "ar") "مراجعة خيارات الموافقة على الإعلانات أو تعديلها."
+                                    else "Review or change your advertising privacy choices.",
+                                    color = Muted, fontSize = 12.sp
+                                )
+                                OutlinedButton(onClick = onPrivacyOptions) {
+                                    Text(if (lang == "ar") "خيارات الخصوصية" else "Privacy options")
+                                }
+                            }
                         }
                     }
                     item {
