@@ -22,7 +22,7 @@
 
         <!-- Google sample application ID for prelaunch testing only. -->
         <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-3940256099942544~3347511713" />
+            android:value="@string/admob_app_id" />
         <meta-data
             android:name="com.google.android.gms.games.APP_ID"
             android:value="@string/game_services_project_id" />

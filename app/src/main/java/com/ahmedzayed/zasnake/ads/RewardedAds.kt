@@ -26,6 +26,11 @@ class RewardedAds(private val activity: Activity, private val ageBand: AgeBand) 
         const val TEST_REWARDED_UNIT = "ca-app-pub-3940256099942544/5224354917"
     }
 
+    private fun adUnitId(placement: RewardPlacement): String = when (placement) {
+        RewardPlacement.REVIVE -> activity.getString(com.ahmedzayed.zasnake.R.string.admob_rewarded_revive)
+        RewardPlacement.DOUBLE_COINS -> activity.getString(com.ahmedzayed.zasnake.R.string.admob_rewarded_double)
+    }
+
     private val ads = mutableMapOf<RewardPlacement, RewardedAd>()
     private val loading = mutableSetOf<RewardPlacement>()
     private var showing = false
@@ -82,7 +87,7 @@ class RewardedAds(private val activity: Activity, private val ageBand: AgeBand) 
         // Keep older users' test-ad requests non-personalized pending the consent stage.
         val extras = Bundle().apply { putString("npa", "1") }
         val request = AdRequest.Builder().addNetworkExtrasBundle(AdMobAdapter::class.java, extras).build()
-        RewardedAd.load(activity, TEST_REWARDED_UNIT, request,
+        RewardedAd.load(activity, adUnitId(placement), request,
             object : RewardedAdLoadCallback() {
                 override fun onAdLoaded(ad: RewardedAd) {
                     if (generation != requestGeneration || !consentAllowed) return
