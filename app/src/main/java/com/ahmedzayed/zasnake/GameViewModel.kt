@@ -149,6 +149,21 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /** Accept only a grants list received by the authenticated server client, never Billing callbacks. */
+    fun applyVerifiedCoinGrants(grants: Map<String, Int>) {
+        if (!mutableUiState.value.ready || grants.isEmpty()) return
+        val allowed = setOf(1000, 2000, 4000)
+        val verified = grants.filter { (tokenHash, coins) ->
+            tokenHash.length == 64 && tokenHash.all { it in '0'..'9' || it in 'a'..'f' } &&
+                coins in allowed
+        }
+        if (verified.isEmpty()) return
+        currentStats = currentStats.copy(
+            purchasedCoinGrants = currentStats.purchasedCoinGrants + verified
+        )
+        persistStats()
+    }
+
     fun setCloudStatus(status: String) {
         mutableUiState.value = mutableUiState.value.copy(cloudStatus = status)
     }

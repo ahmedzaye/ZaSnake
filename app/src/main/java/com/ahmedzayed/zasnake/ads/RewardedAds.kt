@@ -87,7 +87,7 @@ class RewardedAds(private val activity: Activity, private val ageBand: AgeBand) 
         // Keep older users' test-ad requests non-personalized pending the consent stage.
         val extras = Bundle().apply { putString("npa", "1") }
         val request = AdRequest.Builder().addNetworkExtrasBundle(AdMobAdapter::class.java, extras).build()
-        RewardedAd.load(activity, adUnitId(placement), request,
+        RewardedAd.load(activity, if (com.ahmedzayed.zasnake.BuildConfig.DEBUG) TEST_REWARDED_UNIT else adUnitId(placement), request,
             object : RewardedAdLoadCallback() {
                 override fun onAdLoaded(ad: RewardedAd) {
                     if (generation != requestGeneration || !consentAllowed) return

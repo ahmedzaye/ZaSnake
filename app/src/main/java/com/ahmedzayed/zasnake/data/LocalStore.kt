@@ -304,6 +304,7 @@ fun encodeStats(stats: PlayerStats): String = JSONObject().apply {
     put("doubledRoundCoins", JSONObject().apply { stats.doubledRoundCoins.forEach { (id, amount) -> put(id, amount) } })
     put("claimedAchievementRewards", JSONObject().apply { stats.claimedAchievementRewards.forEach { (id, amount) -> put(id, amount) } })
     put("coinSpending", JSONObject().apply { stats.coinSpending.forEach { (transactionId, amount) -> put(transactionId, amount) } })
+    put("purchasedCoinGrants", JSONObject().apply { stats.purchasedCoinGrants.forEach { (id, amount) -> put(id, amount) } })
     put("unlockedSkins", JSONArray().apply { stats.unlockedSkins.forEach { put(it) } })
     put("unlockedHeads", JSONArray().apply { stats.unlockedHeads.forEach { put(it) } })
     put("unlockedBodies", JSONArray().apply { stats.unlockedBodies.forEach { put(it) } })
@@ -372,6 +373,14 @@ fun decodeStats(raw: String): PlayerStats {
         val id = claimedKeys.next()
         if (id.isNotBlank()) claimedRewards[id] = claimedJson.optInt(id, 0).coerceAtLeast(0)
     }
+    val purchaseJson = o.optJSONObject("purchasedCoinGrants") ?: JSONObject()
+    val verifiedGrants = mutableMapOf<String, Int>()
+    val purchaseKeys = purchaseJson.keys()
+    while (purchaseKeys.hasNext()) {
+        val id = purchaseKeys.next()
+        val amount = purchaseJson.optInt(id, 0)
+        if (id.length == 64 && amount in setOf(1000, 2000, 4000)) verifiedGrants[id] = amount
+    }
     val spendingJson = o.optJSONObject("coinSpending") ?: JSONObject()
     val spending = mutableMapOf<String, Int>()
     val spendingKeys = spendingJson.keys()
@@ -423,6 +432,7 @@ fun decodeStats(raw: String): PlayerStats {
         doubledRoundCoins = doubledCoins,
         claimedAchievementRewards = claimedRewards,
         coinSpending = spending,
+        purchasedCoinGrants = verifiedGrants,
         unlockedSkins = (0 until (o.optJSONArray("unlockedSkins")?.length() ?: 0)).mapNotNull { o.optJSONArray("unlockedSkins")?.optString(it)?.takeIf(String::isNotBlank) }.toSet(),
         unlockedHeads = (0 until (o.optJSONArray("unlockedHeads")?.length() ?: 0)).mapNotNull { o.optJSONArray("unlockedHeads")?.optString(it)?.takeIf(String::isNotBlank) }.toSet(),
         unlockedBodies = (0 until (o.optJSONArray("unlockedBodies")?.length() ?: 0)).mapNotNull { o.optJSONArray("unlockedBodies")?.optString(it)?.takeIf(String::isNotBlank) }.toSet(),

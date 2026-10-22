@@ -163,6 +163,7 @@ data class PlayerStats(
     val claimedAchievementRewards: Map<String, Int> = emptyMap(),
     /** Idempotent shop transactions; merged by transaction id across local/cloud saves. */
     val coinSpending: Map<String, Int> = emptyMap(),
+    val purchasedCoinGrants: Map<String, Int> = emptyMap(),
     val unlockedSkins: Set<String> = emptySet(),
     /** Head unlocks are independent of colors; synced with stable transaction ids. */
     val unlockedHeads: Set<String> = emptySet(),
@@ -181,6 +182,7 @@ data class PlayerStats(
 ) {
     val coins: Long get() = (
         coinRewards.values.sumOf { it.toLong() } +
+        purchasedCoinGrants.values.sumOf { it.toLong() } +
         doubledRoundCoins.values.sumOf { it.toLong() } +
         claimedAchievementRewards.values.sumOf { it.toLong() } +
         claimedDailyChallenges.values.sumOf { it.toLong() } +
@@ -227,6 +229,9 @@ data class PlayerStats(
             },
             claimedAchievementRewards = (claimedAchievementRewards.keys + other.claimedAchievementRewards.keys).associateWith { id ->
                 maxOf(claimedAchievementRewards[id] ?: 0, other.claimedAchievementRewards[id] ?: 0)
+            },
+            purchasedCoinGrants = (purchasedCoinGrants.keys + other.purchasedCoinGrants.keys).associateWith { transactionId ->
+                maxOf(purchasedCoinGrants[transactionId] ?: 0, other.purchasedCoinGrants[transactionId] ?: 0)
             },
             coinSpending = (coinSpending.keys + other.coinSpending.keys).associateWith { transactionId ->
                 maxOf(coinSpending[transactionId] ?: 0, other.coinSpending[transactionId] ?: 0)
