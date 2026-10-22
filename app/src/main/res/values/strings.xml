@@ -2,12 +2,12 @@
     <!-- Configure privately before production: Cloud Run https URL and Play Games Web OAuth client id. -->
     <string name="billing_backend_url" translatable="false">UNCONFIGURED</string>
     <string name="pgs_web_client_id" translatable="false">UNCONFIGURED</string>
-    <!-- Replace with real AdMob IDs and Play Games project ID in your private release config. -->
-    <string name="admob_app_id" translatable="false">ca-app-pub-3940256099942544~3347511713</string>
-    <string name="admob_rewarded_revive" translatable="false">ca-app-pub-3940256099942544/5224354917</string>
-    <string name="admob_rewarded_double" translatable="false">ca-app-pub-3940256099942544/5224354917</string>
-    <!-- Replace with the numeric Game Services Project ID from Google Play Console. -->
-    <string name="game_services_project_id" translatable="false">0</string>
+    <!-- Release AdMob IDs. Debug overlays use Google sample rewarded units. -->
+    <string name="admob_app_id" translatable="false">ca-app-pub-6495262421269253~4884698925</string>
+    <string name="admob_rewarded_revive" translatable="false">ca-app-pub-6495262421269253/5814637214</string>
+    <string name="admob_rewarded_double" translatable="false">ca-app-pub-6495262421269253/4581446596</string>
+    <!-- Numeric Play Games Services Project ID supplied by the publisher. -->
+    <string name="game_services_project_id" translatable="false">914975720790</string>
     <!-- Replace each placeholder with the achievement ID from Play Console. -->
     <string name="pgs_achievement_first" translatable="false">REPLACE_WITH_PLAY_CONSOLE_ACHIEVEMENT_ID</string>
     <string name="pgs_achievement_apples50" translatable="false">REPLACE_WITH_PLAY_CONSOLE_ACHIEVEMENT_ID</string>
