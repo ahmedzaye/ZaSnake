@@ -1,0 +1,16 @@
+<resources>
+    <!-- Replace with the numeric Game Services Project ID from Google Play Console. -->
+    <string name="game_services_project_id" translatable="false">0</string>
+    <!-- Replace each placeholder with the achievement ID from Play Console. -->
+    <string name="pgs_achievement_first" translatable="false">REPLACE_WITH_PLAY_CONSOLE_ACHIEVEMENT_ID</string>
+    <string name="pgs_achievement_apples50" translatable="false">REPLACE_WITH_PLAY_CONSOLE_ACHIEVEMENT_ID</string>
+    <string name="pgs_achievement_apples250" translatable="false">REPLACE_WITH_PLAY_CONSOLE_ACHIEVEMENT_ID</string>
+    <string name="pgs_achievement_score10" translatable="false">REPLACE_WITH_PLAY_CONSOLE_ACHIEVEMENT_ID</string>
+    <string name="pgs_achievement_score50" translatable="false">REPLACE_WITH_PLAY_CONSOLE_ACHIEVEMENT_ID</string>
+    <string name="pgs_achievement_golden" translatable="false">REPLACE_WITH_PLAY_CONSOLE_ACHIEVEMENT_ID</string>
+    <string name="pgs_achievement_barber" translatable="false">REPLACE_WITH_PLAY_CONSOLE_ACHIEVEMENT_ID</string>
+    <string name="pgs_achievement_long30" translatable="false">REPLACE_WITH_PLAY_CONSOLE_ACHIEVEMENT_ID</string>
+    <string name="pgs_achievement_games10" translatable="false">REPLACE_WITH_PLAY_CONSOLE_ACHIEVEMENT_ID</string>
+    <string name="pgs_achievement_clock15" translatable="false">REPLACE_WITH_PLAY_CONSOLE_ACHIEVEMENT_ID</string>
+    <string name="pgs_achievement_dedicated" translatable="false">REPLACE_WITH_PLAY_CONSOLE_ACHIEVEMENT_ID</string>
+</resources>

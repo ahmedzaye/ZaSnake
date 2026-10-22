@@ -1,0 +1,13 @@
+--- a/app/src/main/java/com/ahmedzayed/zasnake/ui/ZaSnakeApp.kt
++++ b/app/src/main/java/com/ahmedzayed/zasnake/ui/ZaSnakeApp.kt
+@@ -458,9 +458,7 @@
+     ) {
+         Surface(modifier = Modifier.fillMaxSize().safeDrawingPadding(), color = Bg, contentColor = PrimaryText) {
+             if (!state.ready) {
+-                Box(Modifier.fillMaxSize().background(Bg), contentAlignment = Alignment.Center) {
+-                    Text("Za Snake", color = Neon, fontSize = 28.sp, fontWeight = FontWeight.Black)
+-                }
++                SnakeLoadingScreen(background = Bg, snakeColor = Neon)
+             } else {
+                 when (state.screen) {
+                     AppScreen.HOME -> HomeScreen(state, onNewGame = viewModel::goToModeSelect, onResume = viewModel::resumeSavedGame,
