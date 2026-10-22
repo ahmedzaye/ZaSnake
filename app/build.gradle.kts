@@ -53,6 +53,7 @@ dependencies {
     // Official Android rewarded test ads; replace IDs and add consent flow before publication.
     implementation("com.google.android.gms:play-services-ads:25.5.0")
     implementation("com.google.android.ump:user-messaging-platform:4.0.0")
+    implementation("com.android.billingclient:billing:8.0.0")
 
     // Google Play Games Services v2. Cloud features need Play Console configuration.
     implementation("com.google.android.gms:play-services-games-v2:22.1.0")
