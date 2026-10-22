@@ -12,8 +12,8 @@ android {
         applicationId = "com.zayedart.zasnake"
         minSdk = 24
         targetSdk = 36
-        versionCode = 4
-        versionName = "0.4.0-internal"
+        versionCode = 2
+        versionName = "0.2.0-internal"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
