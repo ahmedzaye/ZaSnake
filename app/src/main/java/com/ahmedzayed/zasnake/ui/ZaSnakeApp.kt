@@ -683,7 +683,8 @@ fun ZaSnakeApp(
         LocalVisualMotionEnabled provides motionEnabled
     ) {
         Surface(modifier = Modifier.fillMaxSize().safeDrawingPadding(), color = Bg, contentColor = PrimaryText) {
-            if (!state.ready) {SnakeLoadingScreen(background = Bg, snakeColor = Neon)
+            if (!state.ready) {
+                SnakeLoadingScreen(background = Bg, snakeColor = Neon, motionEnabled = motionEnabled)
             } else {
                 Box(Modifier.fillMaxSize()) {
                     // Never double-compose a running board while switching pause/game-over states.
