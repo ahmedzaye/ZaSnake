@@ -2,6 +2,7 @@ package com.ahmedzayed.zasnake.ui
 
 import com.ahmedzayed.zasnake.ads.RewardedAds
 import com.ahmedzayed.zasnake.ads.RewardPlacement
+import com.ahmedzayed.zasnake.billing.CoinPriceCatalog
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
@@ -529,6 +530,7 @@ fun ZaSnakeApp(
     viewModel: GameViewModel,
     playGamesBridge: PlayGamesBridge,
     rewardedAds: RewardedAds?,
+    coinPriceCatalog: CoinPriceCatalog?,
     privacyOptionsRequired: Boolean,
     onPrivacyOptions: () -> Unit,
     onExitApp: () -> Unit
@@ -745,7 +747,7 @@ fun ZaSnakeApp(
                                         if (rewarded) celebrateClaim(ACHIEVEMENTS.firstOrNull { it.id == id }?.rewardCoins ?: 0)
                                         rewarded
                                     })
-                                AppScreen.SHOP -> ShopScreen(state, onBack = viewModel::navigateHomeFromSubscreen,
+                                AppScreen.SHOP -> ShopScreen(state, coinPriceCatalog = coinPriceCatalog, onBack = viewModel::navigateHomeFromSubscreen,
                                     onPurchase = viewModel::purchaseSkin, onEquip = viewModel::equipSkin,
                                     onPurchaseHead = viewModel::purchaseHead, onEquipHead = viewModel::equipHead,
                                     onPurchaseBody = viewModel::purchaseBody, onEquipBody = viewModel::equipBody,
@@ -1063,6 +1065,7 @@ private fun DailyRewardsScreen(
 @Composable
 private fun ShopScreen(
     state: AppUiState,
+    coinPriceCatalog: CoinPriceCatalog?,
     onBack: () -> Unit,
     onPurchase: (SnakeSkin) -> Boolean,
     onEquip: (SnakeSkin) -> Unit,
@@ -1074,10 +1077,15 @@ private fun ShopScreen(
     onApplyTheme: (GameTheme) -> Unit
 ) {
     val lang = state.settings.language
+    val coinPriceState = coinPriceCatalog?.state
+    val playPrices = coinPriceCatalog?.localizedPrices.orEmpty()
     val prices = SnakeSkin.entries.associateWith { it.priceCoins }
     var previewSkin by remember(state.settings.skin) { mutableStateOf(state.settings.skin) }
     var pendingBuy by remember { mutableStateOf<SnakeSkin?>(null) }
     var tab by remember { mutableStateOf("skins") }
+    LaunchedEffect(tab, coinPriceCatalog) {
+        if (tab == "coins") coinPriceCatalog?.refresh()
+    }
     var snakeTab by remember { mutableStateOf("colors") }
     var previewHead by remember(state.settings.headStyle) { mutableStateOf(state.settings.headStyle) }
     var pendingHeadBuy by remember { mutableStateOf<SnakeHeadStyle?>(null) }
@@ -1367,6 +1375,13 @@ private fun ShopScreen(
                 Text(tx(lang, "coin_shop_info"), color = Muted,
                     fontSize = 12.sp, lineHeight = 18.sp)
             }
+            if (coinPriceCatalog != null && coinPriceState == CoinPriceCatalog.State.UNAVAILABLE) {
+                item {
+                    OutlinedButton(onClick = { coinPriceCatalog.refresh() }) {
+                        Text(if (lang == "ar") "إعادة محاولة تحميل الأسعار" else "Retry loading prices")
+                    }
+                }
+            }
             items(COIN_PACKAGES, key = { it.productId }) { pack ->
                 Column(
                     Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp))
@@ -1380,8 +1395,11 @@ private fun ShopScreen(
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text("${pack.coinAmount} ${if (lang == "ar") "عملة" else "coins"}",
                                 color = PrimaryText, fontSize = 19.sp, fontWeight = FontWeight.Black)
-                            Text(tx(lang, "coin_shop_price_pending"),
-                                color = Muted, fontSize = 12.sp)
+                            Text(playPrices[pack.productId] ?: when (coinPriceState) {
+                                CoinPriceCatalog.State.LOADING -> if (lang == "ar") "جارٍ تحميل السعر…" else "Loading Google Play price…"
+                                CoinPriceCatalog.State.UNAVAILABLE -> if (lang == "ar") "السعر غير متاح" else "Price unavailable"
+                                else -> tx(lang, "coin_shop_price_pending")
+                            }, color = Muted, fontSize = 12.sp)
                         }
                     }
                     Button(
