@@ -29,17 +29,39 @@ class RewardedAds(private val activity: Activity, private val ageBand: AgeBand) 
     private val ads = mutableMapOf<RewardPlacement, RewardedAd>()
     private val loading = mutableSetOf<RewardPlacement>()
     private var showing = false
+    private var consentAllowed = false
+    private var mobileAdsInitialized = false
+    // Invalidate asynchronous loads when consent is withdrawn.
+    private var requestGeneration = 0
     var readyVersion by mutableStateOf(0)
         private set
 
     fun readyFor(placement: RewardPlacement): Boolean {
         // Observe the version so a Compose screen updates when its placement becomes ready.
         readyVersion
-        return placement in ads && !showing
+        return consentAllowed && placement in ads && !showing
     }
 
-    fun initialize() {
+    /** All ad SDK work stays blocked until UMP reports that ads can be requested. */
+    fun updateConsentAllowance(allowed: Boolean) {
         if (ageBand == AgeBand.CHILD) return
+        if (consentAllowed == allowed) return
+        consentAllowed = allowed
+        requestGeneration++
+        ads.clear()
+        loading.clear()
+        readyVersion++
+        if (!allowed) return
+        if (mobileAdsInitialized) {
+            RewardPlacement.entries.forEach(::load)
+        } else {
+            initializeMobileAds()
+        }
+    }
+
+    private fun initializeMobileAds() {
+        if (!consentAllowed || mobileAdsInitialized) return
+        mobileAdsInitialized = true
         val treatment = if (ageBand == AgeBand.TEEN) AgeRestrictedTreatment.TEEN
             else AgeRestrictedTreatment.UNSPECIFIED
         val configuration = MobileAds.getRequestConfiguration().toBuilder()
@@ -48,24 +70,28 @@ class RewardedAds(private val activity: Activity, private val ageBand: AgeBand) 
             .build()
         MobileAds.setRequestConfiguration(configuration)
         MobileAds.initialize(activity) { activity.runOnUiThread {
-            RewardPlacement.entries.forEach(::load)
+            if (consentAllowed) RewardPlacement.entries.forEach(::load)
         } }
     }
 
     private fun load(placement: RewardPlacement) {
-        if (ageBand == AgeBand.CHILD || placement in loading || placement in ads) return
+        if (ageBand == AgeBand.CHILD || !consentAllowed ||
+            placement in loading || placement in ads) return
         loading += placement
+        val generation = requestGeneration
         // Keep older users' test-ad requests non-personalized pending the consent stage.
         val extras = Bundle().apply { putString("npa", "1") }
         val request = AdRequest.Builder().addNetworkExtrasBundle(AdMobAdapter::class.java, extras).build()
         RewardedAd.load(activity, TEST_REWARDED_UNIT, request,
             object : RewardedAdLoadCallback() {
                 override fun onAdLoaded(ad: RewardedAd) {
+                    if (generation != requestGeneration || !consentAllowed) return
                     loading -= placement
                     ads[placement] = ad
                     readyVersion++
                 }
                 override fun onAdFailedToLoad(error: LoadAdError) {
+                    if (generation != requestGeneration || !consentAllowed) return
                     loading -= placement
                     ads.remove(placement)
                     readyVersion++
@@ -75,7 +101,7 @@ class RewardedAds(private val activity: Activity, private val ageBand: AgeBand) 
 
     /** Grant after both SDK earn confirmation and dismissal, never merely on opening the ad. */
     fun show(placement: RewardPlacement, onEarned: () -> Unit, onUnavailable: () -> Unit) {
-        if (ageBand == AgeBand.CHILD) { onUnavailable(); return }
+        if (ageBand == AgeBand.CHILD || !consentAllowed) { onUnavailable(); return }
         val ad = ads.remove(placement)
         if (ad == null || showing) {
             if (ad != null) ads[placement] = ad
