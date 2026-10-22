@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.core.view.WindowCompat
 import com.ahmedzayed.zasnake.ads.RewardedAds
 import com.ahmedzayed.zasnake.ads.AdConsentManager
+import com.ahmedzayed.zasnake.billing.CoinPriceCatalog
 import com.ahmedzayed.zasnake.age.AgeBand
 import com.ahmedzayed.zasnake.age.AgeDecision
 import com.ahmedzayed.zasnake.age.AgeGateRepository
@@ -34,6 +35,7 @@ class MainActivity : ComponentActivity() {
     private var chosenAge by mutableStateOf<AgeDecision?>(null)
     private var playGamesBridge: PlayGamesBridge? = null
     private var rewardedAds: RewardedAds? = null
+    private var coinPriceCatalog: CoinPriceCatalog? = null
     private var adConsentManager: AdConsentManager? = null
     private var privacyOptionsRequired by mutableStateOf(false)
 
@@ -62,6 +64,7 @@ class MainActivity : ComponentActivity() {
                         viewModel = gameViewModel,
                         playGamesBridge = checkNotNull(playGamesBridge),
                         rewardedAds = rewardedAds,
+                        coinPriceCatalog = coinPriceCatalog,
                         privacyOptionsRequired = privacyOptionsRequired,
                         onPrivacyOptions = { adConsentManager?.showPrivacyOptions(::onConsentResult) },
                         onExitApp = { finish() }
@@ -78,10 +81,16 @@ class MainActivity : ComponentActivity() {
         if (olderUser) runCatching { PlayGamesSdk.initialize(this) }
         playGamesBridge = PlayGamesBridge(this, enabled = olderUser)
         // No mobile-ads init, load or ad request in child mode.
+        if (decision.band == AgeBand.ADULT) coinPriceCatalog = CoinPriceCatalog(this)
         if (olderUser) {
             rewardedAds = RewardedAds(this, decision.band)
             adConsentManager = AdConsentManager(this).also { it.requestOnLaunch(::onConsentResult) }
         }
+    }
+
+    override fun onDestroy() {
+        coinPriceCatalog?.close()
+        super.onDestroy()
     }
 
     private fun onConsentResult(allowed: Boolean, optionsRequired: Boolean) {
