@@ -20,7 +20,7 @@
         android:theme="@android:style/Theme.Material.Light.NoActionBar"
         android:usesCleartextTraffic="false">
 
-        <!-- Google sample application ID for prelaunch testing only. -->
+        <!-- Both debug and release refer to the Za Snake publisher's production AdMob app ID. -->
         <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID"
             android:value="@string/admob_app_id" />
         <meta-data
@@ -30,14 +30,17 @@
             android:name="com.google.android.gms.games.SUPPRESS_GAME_PROFILE_CREATION"
             android:value="true" />
 
-        <!-- Defer third-party startup providers until age treatment is determined.
-             Explicit SDK init (for teens/adults) happens only after the age gate.
-             Device verification is required because provider removal can affect SDK setup. -->
+        <!-- Defer third-party initialization until age treatment is determined. -->
         <provider
             android:name="com.google.android.gms.ads.MobileAdsInitProvider"
             tools:node="remove" />
 
-        <!-- Prevent Play Games from initializing/signing in before the mandatory age screen. -->
+        <!-- Firebase Core starts explicitly only after the age gate in adult mode. -->
+        <provider
+            android:name="com.google.firebase.provider.FirebaseInitProvider"
+            tools:node="remove" />
+
+        <!-- Prevent Play Games initialization before the mandatory age screen. -->
         <provider
             android:name="com.google.android.gms.games.provider.PlayGamesInitProvider"
             tools:node="remove" />

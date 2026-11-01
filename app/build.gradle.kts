@@ -2,6 +2,7 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -12,8 +13,9 @@ android {
         applicationId = "com.zayedart.zasnake"
         minSdk = 24
         targetSdk = 36
-        versionCode = 2
-        versionName = "0.2.0-internal"
+        // First proposed public release. Increase if Play Console already has versionCode >= 3.
+        versionCode = 3
+        versionName = "1.0.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -32,6 +34,12 @@ android {
 }
 
 dependencies {
+    // Firebase core only. Firebase client analytics, Firestore and auth are NOT enabled here.
+    // FirebaseInitProvider is disabled in AndroidManifest.xml; MainActivity initializes
+    // Firebase core after the age gate for adult players only.
+    implementation(platform("com.google.firebase:firebase-bom:35.0.2"))
+    implementation("com.google.firebase:firebase-common")
+
     val composeBom = platform("androidx.compose:compose-bom:2025.12.01")
     implementation(composeBom)
     androidTestImplementation(composeBom)
@@ -50,12 +58,15 @@ dependencies {
     implementation("androidx.datastore:datastore-preferences:1.2.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
 
-    // Official Android rewarded test ads; replace IDs and add consent flow before publication.
+    // AdMob and UMP remain age-gated by MainActivity.
+    // Both variants use the publisher's real AdMob IDs. Register debug devices as test devices.
     implementation("com.google.android.gms:play-services-ads:25.5.0")
     implementation("com.google.android.ump:user-messaging-platform:4.0.0")
+
+    // Prices only; real purchase checkout is intentionally disabled pending verification.
     implementation("com.android.billingclient:billing:8.0.0")
 
-    // Google Play Games Services v2. Cloud features need Play Console configuration.
+    // Google Play Games Services v2; needs Console OAuth, SHA-1 and achievement IDs.
     implementation("com.google.android.gms:play-services-games-v2:22.1.0")
 
     debugImplementation("androidx.compose.ui:ui-tooling")

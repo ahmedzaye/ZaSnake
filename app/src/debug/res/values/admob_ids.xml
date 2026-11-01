@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Real Za Snake AdMob IDs. Register this device as an AdMob test device before running Debug. -->
+    <string name="admob_app_id" translatable="false">ca-app-pub-6495262421269253~4884698925</string>
+    <string name="admob_rewarded_revive" translatable="false">ca-app-pub-6495262421269253/5814637214</string>
+    <string name="admob_rewarded_double" translatable="false">ca-app-pub-6495262421269253/4581446596</string>
+</resources>
