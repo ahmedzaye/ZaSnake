@@ -20,7 +20,6 @@ import com.android.billingclient.api.QueryPurchasesParams
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
-import java.security.MessageDigest
 import java.util.concurrent.Executors
 
 /**
@@ -73,7 +72,7 @@ class CoinPriceCatalog(
         .build()
 
     private val stagingEnabled: Boolean
-        get() = BuildConfig.BILLING_INTEGRATION_ENABLED &&
+        get() = BuildConfig.DEBUG && BuildConfig.BILLING_INTEGRATION_ENABLED &&
             BuildConfig.PGS_WEB_CLIENT_ID.endsWith(".apps.googleusercontent.com")
 
     /** The OAuth secret must NEVER be present in BuildConfig or the application. */
