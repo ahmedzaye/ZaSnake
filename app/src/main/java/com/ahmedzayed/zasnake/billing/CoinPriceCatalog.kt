@@ -184,18 +184,23 @@ class CoinPriceCatalog(
 
     fun canBuy(productId: String): Boolean =
         !closed && stagingEnabled && client.isReady && sessionToken != null &&
-            accountHash != null && !processing && productId in productDetails
+            accountHash != null && !processing &&
+            productDetails[productId]?.oneTimePurchaseOfferDetailsList
+                ?.firstOrNull()?.offerToken?.isNotBlank() == true
 
     fun buy(productId: String) {
         if (!canBuy(productId)) return
         val detail = productDetails[productId] ?: return
         val offer = detail.oneTimePurchaseOfferDetailsList?.firstOrNull() ?: return
+        // Billing Library 8 exposes nullable offer tokens. Fail closed rather than
+        // starting a purchase without the Google Play offer that was displayed.
+        val offerToken = offer.offerToken?.takeIf { it.isNotBlank() } ?: return
         val flow = BillingFlowParams.newBuilder()
             .setProductDetailsParamsList(
                 listOf(
                     BillingFlowParams.ProductDetailsParams.newBuilder()
                         .setProductDetails(detail)
-                        .setOfferToken(offer.offerToken)
+                        .setOfferToken(offerToken)
                         .build()
                 )
             )
