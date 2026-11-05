@@ -1,26 +1,36 @@
 {
   "project_info": {
-    "project_number": "710753820965",
-    "project_id": "za-snake",
-    "storage_bucket": "za-snake.firebasestorage.app"
+    "project_number": "914975720790",
+    "project_id": "zasnake",
+    "storage_bucket": "zasnake.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:710753820965:android:db317f2829ccf21f3d7acc",
+        "mobilesdk_app_id": "1:914975720790:android:ac8c517d747e5085b382f7",
         "android_client_info": {
           "package_name": "com.zayedart.zasnake"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "914975720790-no2qad2ptl94655u5o03phhtldjj2idd.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
-          "current_key": "AIzaSyCSmONIoIhhfjl9SuP46Y2j4xoknR2BvBo"
+          "current_key": "AIzaSyBUJ1xxS7y4kvuMeW9hb1voNfhK8Flg5LU"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "914975720790-no2qad2ptl94655u5o03phhtldjj2idd.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
