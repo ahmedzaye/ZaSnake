@@ -28,6 +28,21 @@ class PlayGamesBridge(private val activity: Activity, private val enabled: Boole
         return projectId.isNotBlank() && projectId != "0" && projectId.all(Char::isDigit)
     }
 
+    /** Request a one-time server auth code. This is NOT the Android OAuth client ID. */
+    fun requestServerAuthCode(webClientId: String, onResult: (String?) -> Unit) {
+        if (!isConfigured() || !webClientId.endsWith(".apps.googleusercontent.com")) {
+            onResult(null)
+            return
+        }
+        runCatching {
+            PlayGames.getGamesSignInClient(activity)
+                .requestServerSideAccess(webClientId, false)
+                .addOnCompleteListener { task ->
+                    onResult(if (task.isSuccessful) task.result?.takeIf(String::isNotBlank) else null)
+                }
+        }.onFailure { onResult(null) }
+    }
+
     fun authenticate(onResult: (Boolean) -> Unit) {
         if (!isConfigured()) {
             onResult(false)
