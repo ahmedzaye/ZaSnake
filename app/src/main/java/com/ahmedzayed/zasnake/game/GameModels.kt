@@ -163,6 +163,8 @@ data class PlayerStats(
     val claimedAchievementRewards: Map<String, Int> = emptyMap(),
     /** Idempotent shop transactions; merged by transaction id across local/cloud saves. */
     val coinSpending: Map<String, Int> = emptyMap(),
+    /** Ephemeral server-authoritative grants: NEVER serialize into local or Play Games saves. */
+    val verifiedPurchaseGrants: Map<String, Int> = emptyMap(),
     val unlockedSkins: Set<String> = emptySet(),
     /** Head unlocks are independent of colors; synced with stable transaction ids. */
     val unlockedHeads: Set<String> = emptySet(),
@@ -184,6 +186,7 @@ data class PlayerStats(
         doubledRoundCoins.values.sumOf { it.toLong() } +
         claimedAchievementRewards.values.sumOf { it.toLong() } +
         claimedDailyChallenges.values.sumOf { it.toLong() } +
+        verifiedPurchaseGrants.values.sumOf { it.toLong() } +
         claimedDailyLogins.values.sumOf { day -> DAILY_LOGIN_COIN_SEQUENCE.getOrElse(day - 1) { 0 }.toLong() } -
         coinSpending.values.sumOf { it.toLong() }
     ).coerceAtLeast(0L)
@@ -231,6 +234,8 @@ data class PlayerStats(
             coinSpending = (coinSpending.keys + other.coinSpending.keys).associateWith { transactionId ->
                 maxOf(coinSpending[transactionId] ?: 0, other.coinSpending[transactionId] ?: 0)
             },
+            // Never merge server grants from untrusted local or cloud snapshots.
+            verifiedPurchaseGrants = verifiedPurchaseGrants,
             unlockedSkins = unlockedSkins + other.unlockedSkins,
             unlockedHeads = unlockedHeads + other.unlockedHeads,
             unlockedBodies = unlockedBodies + other.unlockedBodies,
