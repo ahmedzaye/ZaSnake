@@ -19,7 +19,22 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
-    buildFeatures { compose = true }
+    buildFeatures { 
+        compose = true
+        buildConfig = true
+    }
+
+    // Public configuration only. Never put the OAuth client secret in Android.
+    val webClientId = providers.gradleProperty("pgsWebClientId").orElse("").get()
+    val billingIntegrationEnabled = providers.gradleProperty("billingIntegrationEnabled")
+        .orElse("false").get().equals("true", ignoreCase = true)
+    defaultConfig {
+        buildConfigField("String", "PGS_WEB_CLIENT_ID", "\"$webClientId\"")
+        buildConfigField("String", "BILLING_BASE_URL",
+            "\"https://zasnake-billing-staging-914975720790.europe-west1.run.app\"")
+        buildConfigField("boolean", "BILLING_INTEGRATION_ENABLED",
+            billingIntegrationEnabled.toString())
+    }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

@@ -88,11 +88,20 @@ class MainActivity : ComponentActivity() {
         if (olderUser) runCatching { PlayGamesSdk.initialize(this) }
         playGamesBridge = PlayGamesBridge(this, enabled = olderUser)
         // No mobile-ads init, load or ad request in child mode.
-        if (decision.band == AgeBand.ADULT) coinPriceCatalog = CoinPriceCatalog(this)
+        if (decision.band == AgeBand.ADULT) {
+            coinPriceCatalog = CoinPriceCatalog(this, checkNotNull(playGamesBridge)) { grants ->
+                gameViewModel.applyVerifiedPurchaseGrants(grants)
+            }
+        }
         if (olderUser) {
             rewardedAds = RewardedAds(this, decision.band)
             adConsentManager = AdConsentManager(this).also { it.requestOnLaunch(::onConsentResult) }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        coinPriceCatalog?.resumePendingPurchases()
     }
 
     override fun onDestroy() {

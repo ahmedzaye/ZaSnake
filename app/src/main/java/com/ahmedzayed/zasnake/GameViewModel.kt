@@ -149,6 +149,19 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /** Only the authenticated billing API may supply this ephemeral, replace-only ledger.
+     * Save-game JSON intentionally does not contain verifiedPurchaseGrants.
+     * If offline after a restart, paid credit is unavailable until revalidation.
+     */
+    fun applyVerifiedPurchaseGrants(grants: Map<String, Int>) {
+        val allowed = setOf(1000, 2000, 4000)
+        val validated = grants.filter { (id, coins) ->
+            id.matches(Regex("[0-9a-f]{64}")) && coins in allowed
+        }
+        currentStats = currentStats.copy(verifiedPurchaseGrants = validated)
+        mutableUiState.value = mutableUiState.value.copy(stats = currentStats)
+    }
+
     fun setCloudStatus(status: String) {
         mutableUiState.value = mutableUiState.value.copy(cloudStatus = status)
     }
