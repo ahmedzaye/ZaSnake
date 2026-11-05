@@ -69,6 +69,15 @@ class PlayGamesBridge(private val activity: Activity, private val enabled: Boole
             "games10" -> R.string.pgs_achievement_games10
             "clock15" -> R.string.pgs_achievement_clock15
             "dedicated" -> R.string.pgs_achievement_dedicated
+            "apples500" -> R.string.pgs_achievement_apples500
+            "apples1000" -> R.string.pgs_achievement_apples1000
+            "games50" -> R.string.pgs_achievement_games50
+            "games100" -> R.string.pgs_achievement_games100
+            "golden10" -> R.string.pgs_achievement_golden10
+            "golden50" -> R.string.pgs_achievement_golden50
+            "scissors25" -> R.string.pgs_achievement_scissors25
+            "play60min" -> R.string.pgs_achievement_play60min
+            "score100" -> R.string.pgs_achievement_score100
             else -> return
         }
         val achievementId = activity.getString(resourceName).trim()

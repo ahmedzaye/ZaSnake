@@ -3,15 +3,24 @@
     <!-- Play Games project number supplied by the publisher; NOT the Firebase project number. -->
     <string name="game_services_project_id" translatable="false">914975720790</string>
     <!-- Replace achievement placeholders with actual Google Play Games achievement IDs. -->
-    <string name="pgs_achievement_first" translatable="false">REPLACE_WITH_PLAY_CONSOLE_ACHIEVEMENT_ID</string>
-    <string name="pgs_achievement_apples50" translatable="false">REPLACE_WITH_PLAY_CONSOLE_ACHIEVEMENT_ID</string>
-    <string name="pgs_achievement_apples250" translatable="false">REPLACE_WITH_PLAY_CONSOLE_ACHIEVEMENT_ID</string>
-    <string name="pgs_achievement_score10" translatable="false">REPLACE_WITH_PLAY_CONSOLE_ACHIEVEMENT_ID</string>
-    <string name="pgs_achievement_score50" translatable="false">REPLACE_WITH_PLAY_CONSOLE_ACHIEVEMENT_ID</string>
-    <string name="pgs_achievement_golden" translatable="false">REPLACE_WITH_PLAY_CONSOLE_ACHIEVEMENT_ID</string>
-    <string name="pgs_achievement_barber" translatable="false">REPLACE_WITH_PLAY_CONSOLE_ACHIEVEMENT_ID</string>
-    <string name="pgs_achievement_long30" translatable="false">REPLACE_WITH_PLAY_CONSOLE_ACHIEVEMENT_ID</string>
-    <string name="pgs_achievement_games10" translatable="false">REPLACE_WITH_PLAY_CONSOLE_ACHIEVEMENT_ID</string>
-    <string name="pgs_achievement_clock15" translatable="false">REPLACE_WITH_PLAY_CONSOLE_ACHIEVEMENT_ID</string>
-    <string name="pgs_achievement_dedicated" translatable="false">REPLACE_WITH_PLAY_CONSOLE_ACHIEVEMENT_ID</string>
+    <string name="pgs_achievement_first" translatable="false">CgkI1oq2xtAaEAIQBQ</string>
+    <string name="pgs_achievement_apples50" translatable="false">CgkI1oq2xtAaEAIQBg</string>
+    <string name="pgs_achievement_apples250" translatable="false">CgkI1oq2xtAaEAIQCg</string>
+    <string name="pgs_achievement_score10" translatable="false">CgkI1oq2xtAaEAIQAg</string>
+    <string name="pgs_achievement_score50" translatable="false">CgkI1oq2xtAaEAIQEw</string>
+    <string name="pgs_achievement_golden" translatable="false">CgkI1oq2xtAaEAIQDg</string>
+    <string name="pgs_achievement_barber" translatable="false">CgkI1oq2xtAaEAIQEQ</string>
+    <string name="pgs_achievement_long30" translatable="false">CgkI1oq2xtAaEAIQAw</string>
+    <string name="pgs_achievement_games10" translatable="false">CgkI1oq2xtAaEAIQBw</string>
+    <string name="pgs_achievement_clock15" translatable="false">CgkI1oq2xtAaEAIQEg</string>
+    <string name="pgs_achievement_dedicated" translatable="false">CgkI1oq2xtAaEAIQCw</string>
+    <string name="pgs_achievement_apples500" translatable="false">CgkI1oq2xtAaEAIQCA</string>
+    <string name="pgs_achievement_apples1000" translatable="false">CgkI1oq2xtAaEAIQFQ</string>
+    <string name="pgs_achievement_games50" translatable="false">CgkI1oq2xtAaEAIQDA</string>
+    <string name="pgs_achievement_games100" translatable="false">CgkI1oq2xtAaEAIQFA</string>
+    <string name="pgs_achievement_golden10" translatable="false">CgkI1oq2xtAaEAIQBA</string>
+    <string name="pgs_achievement_golden50" translatable="false">CgkI1oq2xtAaEAIQEA</string>
+    <string name="pgs_achievement_scissors25" translatable="false">CgkI1oq2xtAaEAIQDQ</string>
+    <string name="pgs_achievement_play60min" translatable="false">CgkI1oq2xtAaEAIQCQ</string>
+    <string name="pgs_achievement_score100" translatable="false">CgkI1oq2xtAaEAIQDw</string>
 </resources>
