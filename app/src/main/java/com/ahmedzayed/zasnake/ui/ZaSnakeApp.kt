@@ -1403,16 +1403,24 @@ private fun ShopScreen(
                         }
                     }
                     Button(
-                        onClick = {}, enabled = false,
+                        onClick = { coinPriceCatalog?.buy(pack.productId) },
+                        enabled = coinPriceCatalog?.canBuy(pack.productId) == true,
                         modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text(tx(lang, "coin_shop_unavailable"), fontSize = 12.sp)
+                        Text(
+                            if (coinPriceCatalog?.canBuy(pack.productId) == true)
+                                if (lang == "ar") "الشراء عبر Google Play" else "Buy with Google Play"
+                            else tx(lang, "coin_shop_unavailable"),
+                            fontSize = 12.sp
+                        )
                     }
                 }
             }
             item {
-                Text(tx(lang, "coin_shop_no_payment"),
-                    color = Muted, fontSize = 11.sp, modifier = Modifier.padding(bottom = 12.dp))
+                Text(
+                    coinPriceCatalog?.statusMessage ?: tx(lang, "coin_shop_no_payment"),
+                    color = Muted, fontSize = 11.sp, modifier = Modifier.padding(bottom = 12.dp)
+                )
             }
         } // coins tab
         }
