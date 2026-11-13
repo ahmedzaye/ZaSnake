@@ -104,10 +104,19 @@ def _revoke(transaction, purchase_ref, wallet_ref, digest,
         # Quantity 1. Multi-quantity/partial-money refunds need separate logic.
         raise WalletError("unsupported_refund")
     prior = _state_from_document(w_snap.to_dict() if w_snap.exists else None)
-    updated = revoke(prior, digest, total_revoked)
     previous = purchase.get("revokedCoins", 0)
-    if type(previous) is not int or previous > total_revoked:
+    if type(previous) is not int or previous < 0 or previous > total_revoked:
         raise WalletError("revocation_regression")
+    # A Google-verified refund may arrive BEFORE a consumed purchase has been
+    # credited to the wallet. Record the refund in the purchase ledger even
+    # when there is no wallet grant; later finalize will reject revoked rows.
+    # If credit exists, revoke against that grant atomically.
+    if digest in prior.grants:
+        updated = revoke(prior, digest, total_revoked)
+    else:
+        if purchase.get("status") not in ("reserved", "revoked"):
+            raise WalletError("credit_missing")
+        updated = prior
     if updated != prior:
         transaction.set(wallet_ref, _doc_for(updated))
     if previous < total_revoked:
