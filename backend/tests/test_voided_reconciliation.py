@@ -23,12 +23,14 @@ PURCHASE = {"playerId": PLAYER, "productId": PRODUCT,
 
 def play_session(*pages):
     session = MagicMock()
-    session.get.return_value.raise_for_status.return_value = None
-    session.get.side_effect = []
+    responses = []
     for page in pages:
         reply = MagicMock()
         reply.json.return_value = page
-        session.get.side_effect.append(reply)
+        responses.append(reply)
+    # Assign the completed list once; unittest.mock converts side_effect
+    # iterables into iterators, so appending afterwards would fail.
+    session.get.side_effect = responses
     return session
 
 
