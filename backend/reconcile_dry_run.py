@@ -47,6 +47,39 @@ def perform_read_only_review(*, hours: int, now_ms: int | None = None,
                             dry_run=True)
 
 
+def _safe_play_auth_reason(response) -> str:
+    """Read only an explicitly allowed machine-readable Google auth reason.
+
+    Never copy arbitrary response fields into logs. API error bodies can contain
+    user-controlled identifiers or backend implementation details.
+    """
+    try:
+        payload = response.json()
+        if not isinstance(payload, dict):
+            return "UNSPECIFIED"
+        error = payload.get("error")
+        if not isinstance(error, dict):
+            return "UNSPECIFIED"
+        status = error.get("status")
+        if status == "UNAUTHENTICATED":
+            return "UNAUTHENTICATED"
+        if status == "PERMISSION_DENIED":
+            return "PERMISSION_DENIED"
+        details = error.get("errors")
+        if not isinstance(details, list):
+            return "UNSPECIFIED"
+        for entry in details[:5]:
+            if isinstance(entry, dict):
+                reason = entry.get("reason")
+                if reason == "authError":
+                    return "AUTH_ERROR"
+                if reason == "insufficientPermissions":
+                    return "INSUFFICIENT_PERMISSIONS"
+        return "UNSPECIFIED"
+    except (ValueError, TypeError, AttributeError):
+        return "UNSPECIFIED"
+
+
 def safe_failure_category(error: Exception) -> str:
     """Low-cardinality diagnostic; NEVER emit exception strings or request URLs.
 
@@ -56,7 +89,9 @@ def safe_failure_category(error: Exception) -> str:
     if isinstance(error, http_errors.HTTPError):
         response = error.response
         status = getattr(response, "status_code", None)
-        if type(status) is int and status in (400, 401, 403, 404, 409, 429, 500, 502, 503, 504):
+        if status == 401:
+            return "PLAY_HTTP_401_" + _safe_play_auth_reason(response)
+        if type(status) is int and status in (400, 403, 404, 409, 429, 500, 502, 503, 504):
             return f"PLAY_HTTP_{status}"
         return "PLAY_HTTP_OTHER"
     if isinstance(error, (http_errors.Timeout, http_errors.ConnectionError)):
