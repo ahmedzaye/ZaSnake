@@ -17,6 +17,8 @@ from flask import Flask, jsonify, request
 import requests
 
 from purchase_validation import validate_product_purchase_v2, PurchaseValidationError
+from atomic_wallet_settlement import finalize_consumed_purchase, current_net_grants
+from wallet_rules import WalletError
 
 app = Flask(__name__)
 db = firestore.Client()
@@ -24,6 +26,10 @@ PACKAGE = "com.zayedart.zasnake"
 PRODUCTS = {"zasnake_coins_1000": 1000, "zasnake_coins_2000": 2000,
             "zasnake_coins_4000": 4000}
 SCOPES = ["https://www.googleapis.com/auth/androidpublisher"]
+
+# Explicitly off by default. Enabling requires refund reconciliation, server
+# authoritative spending, account migration, load tests and abuse controls.
+ATOMIC_BILLING_ENABLED = os.environ.get("ATOMIC_BILLING_ENABLED", "false").lower() == "true"
 
 
 def failure(code, status):
@@ -101,13 +107,16 @@ def create_session():
 
 @app.get("/grants")
 def grants():
+    if not ATOMIC_BILLING_ENABLED:
+        return failure("billing_disabled", 503)
     player_id = session_player()
     if not player_id:
         return failure("not_authenticated", 401)
-    # Only grants from confirmed, consumed records; no client-submitted coin amounts.
-    docs = db.collection("purchases").where("playerId", "==", player_id).stream()
-    values = {record.id: int(info["coins"]) for record in docs
-              if (info := record.to_dict()).get("status") == "consumed"}
+    # Wallet is server-stored. No grants are accepted from local/cloud saves.
+    try:
+        values = current_net_grants(db, player_id)
+    except Exception:
+        return failure("purchase_ledger_unavailable", 503)
     return jsonify({"grants": values})
 
 
@@ -128,6 +137,8 @@ def reserve_once(transaction, ref, player_id, product_id, coins, account_id):
 
 @app.post("/claim")
 def claim():
+    if not ATOMIC_BILLING_ENABLED:
+        return failure("billing_disabled", 503)
     player_id = session_player()
     if not player_id:
         return failure("not_authenticated", 401)
@@ -141,16 +152,18 @@ def claim():
     reference = db.collection("purchases").document(digest)
     account_id = hashlib.sha256(player_id.encode("utf-8")).hexdigest()
 
-    # Check account ownership even for previously processed tokens.
-    existing = reference.get()
+    # Existing tokens MUST be re-verified with Google Play; never return credit
+    # just because a Firestore record says consumed. Repeated refunds can occur.
+    try:
+        existing = reference.get()
+    except Exception:
+        return failure("purchase_ledger_unavailable", 503)
     if existing.exists:
         row = existing.to_dict() or {}
         if (row.get("playerId") != player_id or row.get("productId") != product_id
                 or row.get("accountId") != account_id):
             return failure("ownership_conflict", 409)
-        if row.get("status") == "consumed":
-            return jsonify({"grants": {digest: PRODUCTS[product_id]}})
-        if row.get("status") != "reserved":
+        if row.get("status") not in ("reserved", "consumed") or row.get("revokedCoins", 0):
             return failure("not_entitled", 409)
 
     try:
@@ -178,19 +191,26 @@ def claim():
         return failure("ownership_conflict", 409)
     if status not in ("reserved", "consumed"):
         return failure("not_entitled", 409)
-    if status == "reserved" and consumption_state == "CONSUMPTION_STATE_YET_TO_BE_CONSUMED":
+    # A previously finalized purchase reporting unconsumed is inconsistent.
+    if status == "consumed" and consumption_state != "CONSUMPTION_STATE_CONSUMED":
+        return failure("inconsistent_purchase_state", 409)
+    if consumption_state == "CONSUMPTION_STATE_YET_TO_BE_CONSUMED":
         try:
             response = session.post(consume_url(product_id, token), timeout=12)
             response.raise_for_status()
         except requests.RequestException:
-            # If Google completed consumption but response was lost, retry sees
-            # a consumed token and recovers the existing Firestore reservation.
+            # Network ambiguity: retry must verify Google Play again. If Play
+            # consumed already, the Firestore reservation is recoverable.
             return failure("consume_pending_retry", 503)
     try:
-        reference.update({"status": "consumed", "consumedAt": firestore.SERVER_TIMESTAMP})
+        # The purchase document status and wallet credit are committed together.
+        # Never perform Google Play HTTP calls inside the Firestore transaction.
+        granted = finalize_consumed_purchase(db, digest, player_id, product_id, account_id)
+    except WalletError:
+        return failure("not_entitled", 409)
     except Exception:
         return failure("purchase_ledger_unavailable", 503)
-    return jsonify({"grants": {digest: PRODUCTS[product_id]}})
+    return jsonify({"grants": granted})
 
 
 @app.get("/health")
