@@ -17,9 +17,12 @@ import com.android.billingclient.api.Purchase
 import com.android.billingclient.api.PurchasesUpdatedListener
 import com.android.billingclient.api.QueryProductDetailsParams
 import com.android.billingclient.api.QueryPurchasesParams
+import com.google.firebase.appcheck.FirebaseAppCheck
+import com.google.android.gms.tasks.Tasks
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.Executors
 
 /**
@@ -73,7 +76,9 @@ class CoinPriceCatalog(
 
     private val stagingEnabled: Boolean
         get() = BuildConfig.DEBUG && BuildConfig.BILLING_INTEGRATION_ENABLED &&
-            BuildConfig.PGS_WEB_CLIENT_ID.endsWith(".apps.googleusercontent.com")
+            BuildConfig.PGS_WEB_CLIENT_ID.endsWith(".apps.googleusercontent.com") &&
+            BuildConfig.BILLING_BASE_URL.startsWith("https://") &&
+            BuildConfig.BILLING_BASE_URL.endsWith(".run.app")
 
     /** The OAuth secret must NEVER be present in BuildConfig or the application. */
     fun refresh() {
@@ -293,8 +298,8 @@ class CoinPriceCatalog(
         request(path, "GET", null, bearer)
 
     private fun request(path: String, method: String, json: JSONObject?, bearer: String?): JSONObject {
-        // API is private during staging. The flag must remain off until a reviewed
-        // mobile-facing authenticated gateway is deployed.
+        // Only call the separate Firebase App Check verified gateway. The private
+        // Billing service remains IAM restricted; never target it directly.
         val base = BuildConfig.BILLING_BASE_URL.removeSuffix("/")
         val host = URL(base)
         require(host.protocol == "https" && host.host.endsWith(".run.app"))
@@ -304,6 +309,15 @@ class CoinPriceCatalog(
             connection.connectTimeout = 10000
             connection.readTimeout = 12000
             connection.setRequestProperty("Accept", "application/json")
+            // App Check proves the registered app originated the request; PGS
+            // server-session Bearer separately proves the authenticated player.
+            // Called exclusively on the Billing I/O worker, never on the UI thread.
+            val appCheckToken = Tasks.await(
+                FirebaseAppCheck.getInstance().getAppCheckToken(false),
+                12, TimeUnit.SECONDS
+            ).token
+            require(appCheckToken.isNotBlank()) { "missing_app_check_token" }
+            connection.setRequestProperty("X-Firebase-AppCheck", appCheckToken)
             if (!bearer.isNullOrBlank()) {
                 connection.setRequestProperty("Authorization", "Bearer $bearer")
             }
