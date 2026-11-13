@@ -56,7 +56,19 @@ class VoidedReconciliationTests(unittest.TestCase):
             self.assertEqual(args.args[0], PLAY_URL)
             self.assertEqual(args.kwargs["allow_redirects"], False)
             self.assertEqual(args.kwargs["params"]["type"], "0")
-        self.assertEqual(session.get.call_args_list[1].kwargs["params"]["token"], "next")
+        first = session.get.call_args_list[0].kwargs["params"]
+        second = session.get.call_args_list[1].kwargs["params"]
+        self.assertEqual(first["pageSelection.maxResults"], "1000")
+        self.assertEqual(first["startTime"], str(START))
+        self.assertEqual(first["endTime"], str(NOW))
+        self.assertNotIn("maxResults", first)
+        self.assertNotIn("token", first)
+        self.assertNotIn("pageSelection.token", first)
+        self.assertEqual(second["pageSelection.maxResults"], "1000")
+        self.assertEqual(second["pageSelection.token"], "next")
+        self.assertNotIn("token", second)
+        self.assertNotIn("startTime", second)
+        self.assertNotIn("endTime", second)
 
     def test_read_only_default(self):
         db = firestore_with_purchase()
