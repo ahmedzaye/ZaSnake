@@ -25,6 +25,8 @@ import com.ahmedzayed.zasnake.platform.PlayGamesBridge
 import com.ahmedzayed.zasnake.ui.ZaSnakeApp
 import com.google.android.gms.games.PlayGamesSdk
 import com.google.firebase.FirebaseApp
+import com.google.firebase.appcheck.FirebaseAppCheck
+import com.ahmedzayed.zasnake.billing.ZaSnakeAppCheckFactory
 
 private val ZaGreen = Color(0xFF00FF88)
 private val ZaBackground = Color(0xFF050A0E)
@@ -80,8 +82,15 @@ class MainActivity : ComponentActivity() {
         if (playGamesBridge != null) return
         // Do not initialize Firebase on children/teens; no Analytics or client Firestore is used.
         if (decision.band == AgeBand.ADULT) {
-            runCatching { FirebaseApp.initializeApp(this) }
-                .onFailure { Log.e("ZaSnakeFirebase", "Firebase initialization failed", it) }
+            runCatching {
+                checkNotNull(FirebaseApp.initializeApp(this)) {
+                    "Firebase configuration missing"
+                }
+                // Only initialize App Check after adult age determination.
+                FirebaseAppCheck.getInstance().installAppCheckProviderFactory(
+                    ZaSnakeAppCheckFactory.create()
+                )
+            }.onFailure { Log.e("ZaSnakeFirebase", "App Check initialization failed", it) }
         }
         val olderUser = decision.band != AgeBand.CHILD
         // Child mode is local-only until PGS usage is separately reviewed for Families.
