@@ -69,6 +69,40 @@ class ReadOnlyRunnerTests(unittest.TestCase):
         self.assertIn("category=PLAY_HTTP_403", output.getvalue())
         self.assertNotIn("do-not-log", output.getvalue())
 
+    def test_401_error_reason_allowlist_and_secret_redaction(self):
+        response = MagicMock(status_code=401)
+        response.json.return_value = {
+            "error": {"status": "UNAUTHENTICATED",
+                      "message": "Do not expose purchaseToken=secret",
+                      "errors": [{"reason": "authError", "domain": "global"}]}
+        }
+        failure = HTTPError("purchaseToken=secret", response=response)
+        self.assertEqual(safe_failure_category(failure),
+                         "PLAY_HTTP_401_UNAUTHENTICATED")
+        with (patch("reconcile_dry_run.perform_read_only_review",
+                    side_effect=failure),
+              redirect_stderr(io.StringIO()) as output):
+            code = main(["--run"])
+        self.assertEqual(code, 1)
+        self.assertIn("PLAY_HTTP_401_UNAUTHENTICATED", output.getvalue())
+        self.assertNotIn("secret", output.getvalue())
+
+    def test_401_unknown_reason_never_echoed(self):
+        response = MagicMock(status_code=401)
+        response.json.return_value = {"error": {
+            "status": "secret-token",
+            "errors": [{"reason": "accountId=secret"}]}}
+        failure = HTTPError("secret", response=response)
+        self.assertEqual(safe_failure_category(failure),
+                         "PLAY_HTTP_401_UNSPECIFIED")
+
+    def test_401_response_without_json_is_safe(self):
+        response = MagicMock(status_code=401)
+        response.json.side_effect = ValueError("sensitive")
+        failure = HTTPError("sensitive", response=response)
+        self.assertEqual(safe_failure_category(failure),
+                         "PLAY_HTTP_401_UNSPECIFIED")
+
     def test_unclassified_error_never_logs_text(self):
         with (patch("reconcile_dry_run.perform_read_only_review",
                     side_effect=RuntimeError("playerId=sensitive purchaseToken=sensitive")),
