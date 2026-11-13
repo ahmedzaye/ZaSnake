@@ -3,6 +3,9 @@ import io
 import unittest
 from contextlib import redirect_stdout, redirect_stderr
 from unittest.mock import MagicMock, patch
+from requests.exceptions import HTTPError
+
+from reconcile_dry_run import safe_failure_category
 
 from reconcile_dry_run import main, perform_read_only_review
 
@@ -52,6 +55,28 @@ class ReadOnlyRunnerTests(unittest.TestCase):
         self.assertEqual(result, 0)
         self.assertIn('"mode": "DRY_RUN"', output.getvalue())
         self.assertIn('"applied": 0', output.getvalue())
+
+    def test_safe_http_status_diagnostic(self):
+        response = MagicMock()
+        response.status_code = 403
+        failure = HTTPError("secret-token=do-not-log", response=response)
+        self.assertEqual(safe_failure_category(failure), "PLAY_HTTP_403")
+        with (patch("reconcile_dry_run.perform_read_only_review",
+                    side_effect=failure),
+              redirect_stderr(io.StringIO()) as output):
+            code = main(["--run"])
+        self.assertEqual(code, 1)
+        self.assertIn("category=PLAY_HTTP_403", output.getvalue())
+        self.assertNotIn("do-not-log", output.getvalue())
+
+    def test_unclassified_error_never_logs_text(self):
+        with (patch("reconcile_dry_run.perform_read_only_review",
+                    side_effect=RuntimeError("playerId=sensitive purchaseToken=sensitive")),
+              redirect_stderr(io.StringIO()) as output):
+            code = main(["--run"])
+        self.assertEqual(code, 1)
+        self.assertIn("category=UNCLASSIFIED", output.getvalue())
+        self.assertNotIn("playerId", output.getvalue())
 
     def test_cli_failure_does_not_log_credentials(self):
         with (patch("reconcile_dry_run.perform_read_only_review",
