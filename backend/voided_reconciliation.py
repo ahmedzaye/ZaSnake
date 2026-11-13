@@ -7,7 +7,6 @@ The voided-purchases API covers the most recent 30 days. A production poller
 needs frequent overlapping windows, checkpointing/monitoring and RTDN fallback.
 """
 import hashlib
-from collections import Counter
 from urllib.parse import quote
 
 from atomic_wallet_settlement import (
@@ -54,10 +53,12 @@ def fetch_voided_purchases(session, start_ms: int, end_ms: int,
         params = {
             "type": "0",
             "includeQuantityBasedPartialRefund": "true",
-            "maxResults": "1000",
+            # REST API PageSelection fields are flattened as dotted names.
+            # Top-level maxResults/token are NOT the current REST query names.
+            "pageSelection.maxResults": "1000",
         }
         if continuation:
-            params["token"] = continuation
+            params["pageSelection.token"] = continuation
         else:
             params["startTime"] = str(start_ms)
             params["endTime"] = str(end_ms)
