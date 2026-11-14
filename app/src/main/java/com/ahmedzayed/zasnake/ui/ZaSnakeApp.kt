@@ -1192,7 +1192,11 @@ private fun ShopScreen(
     var pendingThemeBuy by remember { mutableStateOf<GameTheme?>(null) }
 
     Column(Modifier.fillMaxSize().background(Bg).padding(horizontal = 16.dp, vertical = 12.dp)) {
-        ScreenHeader(tx(lang, "shop_title"), onBack)
+        ScreenHeader(if (lang == "ar") "عالم التخصيص" else "Style Lab", onBack)
+        PlayformPageIntro(if (lang == "ar") "خلّي ثعبانك مميز" else "Make it your own",
+            if (lang == "ar") "جرّب الألوان والرؤوس والأجسام والثيمات قبل تجهيزها"
+            else "Preview colors, heads, bodies and themes before equipping.")
+        Spacer(Modifier.height(10.dp))
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             ChoiceChip(tx(lang, "shop_skins"), tab == "skins") { tab = "skins" }
@@ -1204,28 +1208,36 @@ private fun ShopScreen(
             }
         }
         Spacer(Modifier.height(8.dp))
-        // This preview and balance stay pinned while only the inventory scrolls.
-        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(15.dp))
-                .background(Brush.linearGradient(listOf(LocalZaPalette.current.statsTile, Panel)))
-                .border(1.dp, selectedColor.copy(alpha = .65f), RoundedCornerShape(15.dp))
-                .padding(horizontal = 12.dp, vertical = 7.dp),
-            verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(if (lang == "ar") "رصيد العملات" else "COIN BALANCE", color = Muted,
-                    fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                Text("🪙 ${state.stats.coins}", color = Gold, fontSize = 20.sp, fontWeight = FontWeight.Black)
+        // A real, renderer-backed preview stays visible while inventory scrolls.
+        PlayformDarkCard {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    PlayformTag("LIVE PREVIEW")
+                    Text(if (lang == "ar") "عاين ثعبانك" else "Preview your snake",
+                        color = Playform.White, fontSize = 19.sp,
+                        fontWeight = FontWeight.Black)
+                }
+                Text("🪙 ${state.stats.coins}", color = Playform.Gold,
+                    fontWeight = FontWeight.Black, fontSize = 17.sp)
             }
             if (tab != "coins") {
-                Box(Modifier.size(90.dp, 68.dp).clip(RoundedCornerShape(11.dp)).background(Color(0xFF07131B))) {
+                Box(Modifier.fillMaxWidth().height(126.dp)
+                    .clip(RoundedCornerShape(15.dp)).background(Color(0xFF07131B))) {
                     if (tab == "skins") when (snakeTab) {
-                        "heads" -> HeadStylePreview(previewHead, state.settings.skin, Modifier.fillMaxSize(), state.settings.bodyType)
-                        "body" -> BodyStylePreview(previewBody, state.settings.skin, state.settings.headStyle, Modifier.fillMaxSize())
-                        else -> SkinPreview(previewSkin, Modifier.fillMaxSize(), state.settings.headStyle, state.settings.bodyType)
+                        "heads" -> HeadStylePreview(previewHead, state.settings.skin,
+                            Modifier.fillMaxSize(), state.settings.bodyType)
+                        "body" -> BodyStylePreview(previewBody, state.settings.skin,
+                            state.settings.headStyle, Modifier.fillMaxSize())
+                        else -> SkinPreview(previewSkin, Modifier.fillMaxSize(),
+                            state.settings.headStyle, state.settings.bodyType)
                     } else ThemeMiniPreview(previewTheme, state.settings.skin, Modifier.fillMaxSize())
                 }
             }
+            Text(if (lang == "ar") "المعاينة لا تغيّر الشكل المجهّز إلا عند الضغط على تجهيز أو إتمام الشراء"
+                else "Preview only. Equip or complete a purchase to apply changes.",
+                color = Playform.LightOnDark, fontSize = 12.sp, lineHeight = 17.sp)
         }
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(10.dp))
         LazyColumn(Modifier.weight(1f).fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
         if (tab == "skins") {
