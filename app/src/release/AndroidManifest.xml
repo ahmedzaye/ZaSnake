@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- v4 ships without real-money purchases. Strip billing permission from
+         merged release manifest, including declarations from libraries. -->
+    <uses-permission
+        android:name="com.android.vending.BILLING"
+        tools:node="remove" />
+</manifest>

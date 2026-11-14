@@ -80,8 +80,10 @@ class MainActivity : ComponentActivity() {
 
     private fun setupAfterAgeGate(decision: AgeDecision) {
         if (playGamesBridge != null) return
-        // Do not initialize Firebase on children/teens; no Analytics or client Firestore is used.
-        if (decision.band == AgeBand.ADULT) {
+        // Firebase App Check is exclusively used by the disabled paid-billing
+        // gateway. Do not initialize Firebase at all in this no-IAP release.
+        // The Debug staging variant retains the experimental configuration.
+        if (decision.band == AgeBand.ADULT && BuildConfig.DEBUG) {
             runCatching {
                 checkNotNull(FirebaseApp.initializeApp(this)) {
                     "Firebase configuration missing"
@@ -97,7 +99,10 @@ class MainActivity : ComponentActivity() {
         if (olderUser) runCatching { PlayGamesSdk.initialize(this) }
         playGamesBridge = PlayGamesBridge(this, enabled = olderUser)
         // No mobile-ads init, load or ad request in child mode.
-        if (decision.band == AgeBand.ADULT) {
+        // This v4 update does not offer in-app purchases. Only debug builds
+        // may inspect the future Billing staging UI; release never creates
+        // BillingClient, requests Play prices, or resumes purchase flows.
+        if (decision.band == AgeBand.ADULT && BuildConfig.DEBUG) {
             coinPriceCatalog = CoinPriceCatalog(this, checkNotNull(playGamesBridge)) { grants ->
                 gameViewModel.applyVerifiedPurchaseGrants(grants)
             }

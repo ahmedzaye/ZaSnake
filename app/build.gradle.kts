@@ -14,8 +14,8 @@ android {
         minSdk = 24
         targetSdk = 36
         // First proposed public release. Increase if Play Console already has versionCode >= 3.
-        versionCode = 3
-        versionName = "1.0.0"
+        versionCode = 4
+        versionName = "1.0.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
