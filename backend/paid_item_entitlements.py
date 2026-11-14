@@ -53,8 +53,8 @@ def decide_paid_item_purchase(state: WalletState, item_id: str):
     return updated, price, False
 
 
-@firestore.transactional
-def _purchase(transaction, wallet_ref, item_id):
+def _purchase_impl(transaction, wallet_ref, item_id):
+    """Transaction body separated from the library decorator for offline tests."""
     # Every read comes before writes; no nested transaction or external API.
     snapshot = wallet_ref.get(transaction=transaction)
     state = _state_from_document(snapshot.to_dict() if snapshot.exists else None)
@@ -68,6 +68,12 @@ def _purchase(transaction, wallet_ref, item_id):
         "alreadyOwnedInPaidWallet": already_owned,
         "remainingPaidBalance": updated.balance,
     }
+
+
+@firestore.transactional
+def _purchase(transaction, wallet_ref, item_id):
+    # The production entrypoint stays decorated; Firestore manages retries.
+    return _purchase_impl(transaction, wallet_ref, item_id)
 
 
 def purchase_paid_item_staging(db, authenticated_player_id: str, item_id: str):
