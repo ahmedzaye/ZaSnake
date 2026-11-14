@@ -1153,6 +1153,74 @@ private fun DailyRewardsScreen(
 }
 
 @Composable
+private fun StyleLabItemCard(
+    title: String,
+    selected: Boolean,
+    owned: Boolean,
+    equipped: Boolean,
+    price: Int,
+    balance: Long,
+    language: String,
+    modifier: Modifier = Modifier,
+    preview: @Composable () -> Unit,
+    onPreview: () -> Unit,
+    onAction: () -> Unit
+) {
+    val ar = language == "ar"
+    Column(
+        modifier.clip(RoundedCornerShape(18.dp))
+            .background(if (selected) Playform.PaleLavender else Playform.White)
+            .border(if (selected) 2.dp else 1.dp,
+                if (selected) Playform.Ink else Playform.Border,
+                RoundedCornerShape(18.dp))
+            .clickable(onClick = onPreview).padding(10.dp),
+        verticalArrangement = Arrangement.spacedBy(7.dp)
+    ) {
+        Box(Modifier.fillMaxWidth().height(76.dp).clip(RoundedCornerShape(12.dp))
+            .background(Playform.Ink)) {
+            preview()
+            if (selected) {
+                Box(Modifier.align(Alignment.TopEnd).padding(5.dp).size(20.dp)
+                    .clip(CircleShape).background(Playform.Gold),
+                    contentAlignment = Alignment.Center) {
+                    androidx.compose.material3.Icon(Icons.Rounded.CheckCircle, null,
+                        tint = Playform.Ink, modifier = Modifier.size(16.dp))
+                }
+            }
+        }
+        Text(title, color = Playform.Ink, fontSize = 13.sp,
+            fontWeight = FontWeight.Black, minLines = 1, maxLines = 2)
+        Text(when {
+            equipped -> if (ar) "مُجهّز حاليًا" else "Equipped"
+            owned -> if (ar) "مملوك" else "Owned"
+            else -> "🪙 $price"
+        }, color = Playform.TextSecondary, fontSize = 12.sp)
+        Button(
+            onClick = onAction,
+            enabled = !equipped && (owned || balance >= price),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
+            contentPadding = PaddingValues(horizontal = 5.dp, vertical = 7.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Playform.Coral, contentColor = Playform.Ink,
+                disabledContainerColor = Playform.PaleLavender,
+                disabledContentColor = Playform.TextSecondary)
+        ) {
+            Text(when {
+                equipped -> if (ar) "مُجهّز ✓" else "Equipped ✓"
+                owned -> if (ar) "تجهيز" else "Equip"
+                else -> if (ar) "شراء" else "Buy"
+            }, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+        }
+        if (!owned && balance < price) {
+            Text(if (ar) "ناقصك ${price - balance} عملة"
+                else "${price - balance} more coins needed",
+                color = Playform.TextSecondary, fontSize = 11.sp, lineHeight = 15.sp)
+        }
+    }
+}
+
+@Composable
 private fun ShopScreen(
     state: AppUiState,
     coinPriceCatalog: CoinPriceCatalog?,
@@ -1191,39 +1259,42 @@ private fun ShopScreen(
     }
     var pendingThemeBuy by remember { mutableStateOf<GameTheme?>(null) }
 
-    Column(Modifier.fillMaxSize().background(Bg).padding(horizontal = 16.dp, vertical = 12.dp)) {
+    val compactInventory = LocalConfiguration.current.screenWidthDp < 360 ||
+        LocalDensity.current.fontScale > 1.25f
+    val columns = if (compactInventory) 1 else 2
+    Column(Modifier.fillMaxSize().background(Playform.Cream)
+        .padding(horizontal = 16.dp, vertical = 12.dp)) {
         ScreenHeader(if (lang == "ar") "عالم التخصيص" else "Style Lab", onBack)
-        PlayformPageIntro(if (lang == "ar") "خلّي ثعبانك مميز" else "Make it your own",
-            if (lang == "ar") "جرّب الألوان والرؤوس والأجسام والثيمات قبل تجهيزها"
-            else "Preview colors, heads, bodies and themes before equipping.")
-        Spacer(Modifier.height(10.dp))
+        PlayformPageIntro(
+            if (lang == "ar") "خلّي ثعبانك مميز" else "Make it your own",
+            if (lang == "ar") "جرّب العناصر قبل تجهيزها" else "Preview a look before equipping it."
+        )
+        Spacer(Modifier.height(9.dp))
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             ChoiceChip(tx(lang, "shop_skins"), tab == "skins") { tab = "skins" }
             ChoiceChip(tx(lang, "shop_themes"), tab == "themes") { tab = "themes" }
-            // No paid coin packs in v4 release. Debug keeps staging price UI
-            // for developer testing, while skins/themes remain free-coin shops.
+            // Keep paid coin packages visible only in debug, as in release v4.
             if (com.ahmedzayed.zasnake.BuildConfig.DEBUG) {
                 ChoiceChip(tx(lang, "shop_coins"), tab == "coins") { tab = "coins" }
             }
         }
-        Spacer(Modifier.height(8.dp))
-        // A real, renderer-backed preview stays visible while inventory scrolls.
+        Spacer(Modifier.height(9.dp))
         PlayformDarkCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     PlayformTag("LIVE PREVIEW")
-                    Text(if (lang == "ar") "عاين ثعبانك" else "Preview your snake",
+                    Text(if (lang == "ar") "عاين ثعبانك" else "Your Snake",
                         color = Playform.White, fontSize = 19.sp,
                         fontWeight = FontWeight.Black)
                 }
                 Text("🪙 ${state.stats.coins}", color = Playform.Gold,
-                    fontWeight = FontWeight.Black, fontSize = 17.sp)
+                    fontSize = 16.sp, fontWeight = FontWeight.Black)
             }
             if (tab != "coins") {
-                Box(Modifier.fillMaxWidth().height(
-                    if (LocalConfiguration.current.screenHeightDp < 650) 86.dp else 126.dp)
-                    .clip(RoundedCornerShape(15.dp)).background(Color(0xFF07131B))) {
+                Box(Modifier.fillMaxWidth()
+                    .height(if (LocalConfiguration.current.screenHeightDp < 650) 85.dp else 120.dp)
+                    .clip(RoundedCornerShape(14.dp)).background(Color(0xFF07131B))) {
                     if (tab == "skins") when (snakeTab) {
                         "heads" -> HeadStylePreview(previewHead, state.settings.skin,
                             Modifier.fillMaxSize(), state.settings.bodyType)
@@ -1233,303 +1304,185 @@ private fun ShopScreen(
                             state.settings.headStyle, state.settings.bodyType)
                     } else ThemeMiniPreview(previewTheme, state.settings.skin, Modifier.fillMaxSize())
                 }
+                Text(if (lang == "ar") "المعاينة لا تجهّز العنصر أو تشتريه تلقائيًا"
+                    else "Previewing does not equip or buy an item.",
+                    color = Playform.LightOnDark, fontSize = 12.sp, lineHeight = 17.sp)
             }
-            Text(if (lang == "ar") "المعاينة لا تغيّر الشكل المجهّز إلا عند الضغط على تجهيز أو إتمام الشراء"
-                else "Preview only. Equip or complete a purchase to apply changes.",
-                color = Playform.LightOnDark, fontSize = 12.sp, lineHeight = 17.sp)
         }
         Spacer(Modifier.height(10.dp))
-        LazyColumn(Modifier.weight(1f).fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        if (tab == "skins") {
-        item {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                ChoiceChip(tx(lang, "shop_colors"), snakeTab == "colors") { snakeTab = "colors" }
-                ChoiceChip(tx(lang, "shop_heads"), snakeTab == "heads") { snakeTab = "heads" }
-                ChoiceChip(tx(lang, "shop_bodies"), snakeTab == "body") { snakeTab = "body" }
-            }
-        }
-        if (snakeTab == "colors") {
-        item {
-            Text(if (lang == "ar") "ألوان الثعبان" else "SNAKE COLORS", color = PrimaryText, fontWeight = FontWeight.Black, fontSize = 15.sp)
-        }
-        items(listOf(SnakeSkin.GREEN, SnakeSkin.PURPLE, SnakeSkin.YELLOW, SnakeSkin.CYBER, SnakeSkin.ICE, SnakeSkin.FIRE) + ARAB_COLLECTION) { skin ->
-            if (skin == SnakeSkin.EGYPT) {
-                Column(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 4.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(tx(lang, "arab_collection"), color = PrimaryText,
-                        fontWeight = FontWeight.Black, fontSize = 17.sp)
-                    Text(tx(lang, "arab_collection_desc"), color = Muted, fontSize = 12.sp)
-                }
-            }
-            val owned = skin.key in state.settings.ownedSkinKeys
-            val equipped = state.settings.skin == skin
-            val price = prices.getValue(skin)
-            val color = snakeSkinColors(skin).first()
-            val active = previewSkin == skin
-            Column(
-                Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp))
-                    .background(if (active) LocalZaPalette.current.statsTile else Panel)
-                    .border(if (active) 1.5.dp else 1.dp, if (active) color else BorderColor, RoundedCornerShape(18.dp))
-                    .clickable { previewSkin = skin }.padding(12.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Box(Modifier.size(92.dp, 72.dp).clip(RoundedCornerShape(12.dp)).background(Color(0xFF07131B))) {
-                        SkinPreview(skin, Modifier.fillMaxSize(), state.settings.headStyle, state.settings.bodyType)
-                        if (active) {
-                            Box(Modifier.align(Alignment.TopEnd).padding(5.dp).size(19.dp).clip(CircleShape).background(color), contentAlignment = Alignment.Center) {
-                                androidx.compose.material3.Icon(Icons.Rounded.CheckCircle, null, tint = Color(0xFF07131B), modifier = Modifier.size(17.dp))
-                            }
-                        }
-                    }
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(tx(lang, skin.key), color = PrimaryText, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                        Text(
-                            when (skin) {
-                                SnakeSkin.GREEN -> if (lang == "ar") "أخضر كلاسيكي" else "Classic green"
-                                SnakeSkin.PURPLE -> if (lang == "ar") "بنفسجي ناعم" else "Soft purple"
-                                SnakeSkin.YELLOW -> if (lang == "ar") "أصفر مشرق" else "Bright yellow"
-                                SnakeSkin.CYBER -> if (lang == "ar") "نيون رقمي" else "Digital neon"
-                                SnakeSkin.ICE -> if (lang == "ar") "لمسة جليدية" else "Frost finish"
-                                SnakeSkin.FIRE -> if (lang == "ar") "توهج ناري" else "Fiery glow"
-                                SnakeSkin.EGYPT -> if (lang == "ar") "أحمر وفضي وأسود مع لمسة ذهبية" else "Red, ivory, black & gold"
-                                SnakeSkin.UAE -> if (lang == "ar") "أخضر زمردي ولمسة حمراء" else "Emerald and ruby accents"
-                                SnakeSkin.JORDAN -> if (lang == "ar") "شرائط داكنة وتفاصيل قرمزية" else "Dark stripes with crimson"
-                                SnakeSkin.PALESTINE -> if (lang == "ar") "أخضر زيتوني وتباين أسود وأبيض" else "Olive, ivory and onyx"
-                                SnakeSkin.KUWAIT -> if (lang == "ar") "أسود فحمي وألوان مشرقة" else "Charcoal with bright stripes"
-                                SnakeSkin.SAUDI -> if (lang == "ar") "أخضر فاخر وأبيض ولمسة ذهبية" else "Royal green, ivory and gold"
-                            }, color = Muted, fontSize = 11.sp
-                        )
-                        Text(if (owned) if (equipped) (if (lang == "ar") "مُجهّز حاليًا" else "Currently equipped") else tx(lang, "owned") else "$price 🪙", color = if (owned) Neon else Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedButton(
-                        onClick = { previewSkin = skin }, modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.75f))
-                    ) { Text(if (lang == "ar") "معاينة" else "Preview", color = color, fontWeight = FontWeight.Bold) }
-                    if (owned) {
-                        Button(
-                            onClick = { onEquip(skin) }, enabled = !equipped, modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(containerColor = Neon, contentColor = ButtonText),
-                            shape = RoundedCornerShape(12.dp)
-                        ) { Text(if (equipped) (if (lang == "ar") "مُجهّز" else "Equipped") else tx(lang, "equip"), fontWeight = FontWeight.Bold) }
-                    } else {
-                        Button(
-                            onClick = { previewSkin = skin; pendingBuy = skin }, enabled = state.stats.coins >= price,
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(containerColor = Neon, contentColor = ButtonText),
-                            shape = RoundedCornerShape(12.dp)
-                        ) { Text(tx(lang, "buy"), fontWeight = FontWeight.Bold) }
-                    }
-                }
-                if (!owned && state.stats.coins < price) {
-                    Text(if (lang == "ar") "ناقصك ${price - state.stats.coins} عملة" else "${price - state.stats.coins} more coins needed", color = Muted, fontSize = 11.sp)
-                }
-            }
-        }
-        } else if (snakeTab == "heads") {
-            item {
-                Text(tx(lang, "head_title"), color = PrimaryText, fontSize = 16.sp, fontWeight = FontWeight.Black)
-                Text(tx(lang, "head_hint"), color = Muted, fontSize = 12.sp)
-            }
-            items(SnakeHeadStyle.entries) { head ->
-                val owned = head.isFree || head.key in state.settings.ownedHeadKeys
-                val equipped = state.settings.headStyle == head
-                val highlighted = previewHead == head
-                Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp))
-                    .background(if (highlighted) SelectedPanel else Panel)
-                    .border(if (highlighted) 1.5.dp else 1.dp, if (highlighted) Neon else BorderColor, RoundedCornerShape(18.dp))
-                    .clickable { previewHead = head }.padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Box(Modifier.size(92.dp, 72.dp).clip(RoundedCornerShape(12.dp)).background(Color(0xFF07131B))) {
-                            HeadStylePreview(head, state.settings.skin, Modifier.fillMaxSize(), state.settings.bodyType)
-                        }
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                            Text(tx(lang, "head_${head.key}"), color = PrimaryText, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                            Text(if (owned) (if (equipped) (if (lang == "ar") "مُجهّز" else "Equipped") else tx(lang, "owned"))
-                                else "${head.priceCoins} 🪙", color = if (owned) Neon else Gold, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                        }
-                    }
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(onClick = { previewHead = head }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp)) {
-                            Text(if (lang == "ar") "معاينة" else "Preview", color = Playform.Ink, fontSize = 13.sp)
-                        }
-                        Button(
-                            onClick = { if (owned) onEquipHead(head) else pendingHeadBuy = head },
-                            enabled = if (owned) !equipped else state.stats.coins >= head.priceCoins,
-                            modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Neon, contentColor = ButtonText)
-                        ) {
-                            Text(if (owned) (if (equipped) (if (lang == "ar") "مُجهّز" else "Equipped") else tx(lang, "equip"))
-                                 else tx(lang, "buy"), fontWeight = FontWeight.Bold)
-                        }
-                    }
-                    if (!owned && state.stats.coins < head.priceCoins) {
-                        Text(if (lang == "ar") "ناقصك ${head.priceCoins - state.stats.coins} عملة"
-                            else "${head.priceCoins - state.stats.coins} more coins needed", color = Muted, fontSize = 11.sp)
-                    }
-                }
-            }
-        } else {
-            item {
-                Text(tx(lang, "body_title"), color = PrimaryText, fontWeight = FontWeight.Black, fontSize = 16.sp)
-                Text(tx(lang, "body_soon_hint"), color = Muted, fontSize = 12.sp)
-            }
-            items(SnakeBodyType.entries) { body ->
-                val owned = body.isFree || body.key in state.settings.ownedBodyKeys
-                val equipped = state.settings.bodyType == body
-                val highlighted = previewBody == body
-                Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp))
-                    .background(if (highlighted) SelectedPanel else Panel)
-                    .border(if (highlighted) 1.5.dp else 1.dp, if (highlighted) Neon else BorderColor, RoundedCornerShape(18.dp))
-                    .clickable { previewBody = body }.padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                    Box(Modifier.fillMaxWidth().height(95.dp).clip(RoundedCornerShape(12.dp)).background(Color(0xFF07131B))) {
-                        BodyStylePreview(body, state.settings.skin, state.settings.headStyle, Modifier.fillMaxSize())
-                    }
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text(tx(lang, "body_${body.key}"), color = PrimaryText,
-                            fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.weight(1f))
-                        Text(if (owned) (if (equipped) (if (lang == "ar") "مُجهّز" else "Equipped") else tx(lang, "owned"))
-                            else "${body.priceCoins} 🪙", color = if (owned) Neon else Gold,
-                            fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                    }
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(onClick = { previewBody = body }, modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(12.dp)) {
-                            Text(if (lang == "ar") "معاينة" else "Preview", color = Playform.Ink, fontSize = 13.sp)
-                        }
-                        Button(onClick = { if (owned) onEquipBody(body) else pendingBodyBuy = body },
-                            enabled = if (owned) !equipped else state.stats.coins >= body.priceCoins,
-                            modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Neon, contentColor = ButtonText)) {
-                            Text(if (owned) (if (equipped) (if (lang == "ar") "مُجهّز" else "Equipped") else tx(lang, "equip"))
-                                else tx(lang, "buy"), fontWeight = FontWeight.Bold)
-                        }
-                    }
-                    if (!owned && state.stats.coins < body.priceCoins) {
-                        Text(if (lang == "ar") "ناقصك ${body.priceCoins - state.stats.coins} عملة"
-                            else "${body.priceCoins - state.stats.coins} more coins needed", color = Muted, fontSize = 11.sp)
-                    }
-                }
-            }
-        }
-        } // snake customization tab
-        else if (tab == "themes") {
-            item {
-                Text(tx(lang, "theme_shop_hint"), color = Muted, fontSize = 12.sp, lineHeight = 18.sp)
-            }
-            items(GameTheme.entries.filterNot { it.isFree }) { theme ->
-                val p = paletteFor(theme)
-                val owned = theme.key in state.settings.ownedThemeKeys
-                val applied = state.settings.theme == theme
-                val focused = previewTheme == theme
-                Column(
-                    Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp))
-                        .background(if (focused) SelectedPanel else Panel)
-                        .border(if (focused) 1.5.dp else 1.dp, if (focused) p.accent else BorderColor, RoundedCornerShape(18.dp))
-                        .clickable { previewTheme = theme }
-                        .padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    ThemeMiniPreview(theme, state.settings.skin, Modifier.fillMaxWidth().height(86.dp))
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                            Text(themeTitle(theme, lang), color = PrimaryText, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                            Text(themeDescription(theme, lang), color = Muted, fontSize = 11.sp)
-                        }
-                        Text(if (owned) tx(lang, "owned") else "${theme.priceCoins} 🪙", color = if (owned) Neon else Gold,
-                            fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                    }
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(onClick = { previewTheme = theme }, modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(12.dp)) {
-                            Text(tx(lang, "theme_preview"), fontSize = 13.sp, color = Playform.Ink)
-                        }
-                        if (owned) {
-                            Button(onClick = { onApplyTheme(theme) }, enabled = !applied,
-                                modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Neon, contentColor = ButtonText)) {
-                                Text(if (applied) tx(lang, "theme_active") else tx(lang, "theme_apply"), fontSize = 12.sp)
-                            }
-                        } else {
-                            Button(onClick = { pendingThemeBuy = theme }, enabled = state.stats.coins >= theme.priceCoins,
-                                modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Neon, contentColor = ButtonText)) {
-                                Text(tx(lang, "buy"), fontSize = 12.sp)
-                            }
-                        }
-                    }
-                    if (!owned && state.stats.coins < theme.priceCoins) {
-                        Text(if (lang == "ar") "ناقصك ${theme.priceCoins - state.stats.coins} عملة" else
-                            "${theme.priceCoins - state.stats.coins} more coins needed", color = Muted, fontSize = 11.sp)
-                    }
-                }
-            }
-            item {
-                Text(tx(lang, "theme_free_hint"), color = Muted, fontSize = 12.sp,
-                    modifier = Modifier.padding(bottom = 12.dp))
-            }
-        } // themes tab
-        else if (tab == "coins") {
-            item {
-                Text(tx(lang, "coin_shop_title"), color = PrimaryText,
-                    fontWeight = FontWeight.Black, fontSize = 18.sp)
-                Text(tx(lang, "coin_shop_info"), color = Muted,
-                    fontSize = 12.sp, lineHeight = 18.sp)
-            }
-            if (coinPriceCatalog != null && coinPriceState == CoinPriceCatalog.State.UNAVAILABLE) {
+        LazyColumn(Modifier.fillMaxWidth().weight(1f),
+            verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (tab == "skins") {
                 item {
-                    OutlinedButton(onClick = { coinPriceCatalog.refresh() }) {
-                        Text(if (lang == "ar") "إعادة محاولة تحميل الأسعار" else "Retry loading prices")
+                    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                        ChoiceChip(tx(lang, "shop_colors"), snakeTab == "colors") { snakeTab = "colors" }
+                        ChoiceChip(tx(lang, "shop_heads"), snakeTab == "heads") { snakeTab = "heads" }
+                        ChoiceChip(tx(lang, "shop_bodies"), snakeTab == "body") { snakeTab = "body" }
                     }
                 }
-            }
-            items(COIN_PACKAGES, key = { it.productId }) { pack ->
-                Column(
-                    Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp))
-                        .background(Panel).border(1.dp, BorderColor, RoundedCornerShape(18.dp))
-                        .padding(14.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text("🪙", fontSize = 28.sp)
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text("${pack.coinAmount} ${if (lang == "ar") "عملة" else "coins"}",
-                                color = PrimaryText, fontSize = 19.sp, fontWeight = FontWeight.Black)
-                            Text(playPrices[pack.productId] ?: when (coinPriceState) {
-                                CoinPriceCatalog.State.LOADING -> if (lang == "ar") "جارٍ تحميل السعر…" else "Loading Google Play price…"
-                                CoinPriceCatalog.State.UNAVAILABLE -> if (lang == "ar") "السعر غير متاح" else "Price unavailable"
-                                else -> tx(lang, "coin_shop_price_pending")
-                            }, color = Muted, fontSize = 12.sp)
+                if (snakeTab == "colors") {
+                    item { PlayformSectionTitle(if (lang == "ar") "ألوان الثعبان" else "Snake Colors") }
+                    val normalSkins = listOf(
+                        SnakeSkin.GREEN, SnakeSkin.PURPLE, SnakeSkin.YELLOW,
+                        SnakeSkin.CYBER, SnakeSkin.ICE, SnakeSkin.FIRE
+                    )
+                    items(normalSkins.chunked(columns)) { group ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            group.forEach { skin ->
+                                val owned = skin.isFree || skin.key in state.settings.ownedSkinKeys
+                                StyleLabItemCard(tx(lang, skin.key), previewSkin == skin,
+                                    owned, state.settings.skin == skin, skin.priceCoins,
+                                    state.stats.coins, lang, Modifier.weight(1f),
+                                    preview = {
+                                        SkinPreview(skin, Modifier.fillMaxSize(),
+                                            state.settings.headStyle, state.settings.bodyType)
+                                    },
+                                    onPreview = { previewSkin = skin },
+                                    onAction = {
+                                        if (owned) onEquip(skin)
+                                        else { previewSkin = skin; pendingBuy = skin }
+                                    })
+                            }
+                            repeat(columns - group.size) { Spacer(Modifier.weight(1f)) }
                         }
                     }
-                    Button(
-                        onClick = { coinPriceCatalog?.buy(pack.productId) },
-                        enabled = coinPriceCatalog?.canBuy(pack.productId) == true,
-                        modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text(
-                            if (coinPriceCatalog?.canBuy(pack.productId) == true)
-                                if (lang == "ar") "الشراء عبر Google Play" else "Buy with Google Play"
-                            else tx(lang, "coin_shop_unavailable"),
-                            fontSize = 12.sp
-                        )
+                    item {
+                        PlayformSectionTitle(tx(lang, "arab_collection"),
+                            tx(lang, "arab_collection_desc"))
+                    }
+                    items(ARAB_COLLECTION.chunked(columns)) { group ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            group.forEach { skin ->
+                                val owned = skin.isFree || skin.key in state.settings.ownedSkinKeys
+                                StyleLabItemCard(tx(lang, skin.key), previewSkin == skin,
+                                    owned, state.settings.skin == skin, skin.priceCoins,
+                                    state.stats.coins, lang, Modifier.weight(1f),
+                                    preview = {
+                                        SkinPreview(skin, Modifier.fillMaxSize(),
+                                            state.settings.headStyle, state.settings.bodyType)
+                                    },
+                                    onPreview = { previewSkin = skin },
+                                    onAction = {
+                                        if (owned) onEquip(skin)
+                                        else { previewSkin = skin; pendingBuy = skin }
+                                    })
+                            }
+                            repeat(columns - group.size) { Spacer(Modifier.weight(1f)) }
+                        }
+                    }
+                } else if (snakeTab == "heads") {
+                    item { PlayformSectionTitle(tx(lang, "head_title"), tx(lang, "head_hint")) }
+                    items(SnakeHeadStyle.entries.toList().chunked(columns)) { group ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            group.forEach { head ->
+                                val owned = head.isFree || head.key in state.settings.ownedHeadKeys
+                                StyleLabItemCard(tx(lang, "head_${head.key}"), previewHead == head,
+                                    owned, state.settings.headStyle == head, head.priceCoins,
+                                    state.stats.coins, lang, Modifier.weight(1f),
+                                    preview = {
+                                        HeadStylePreview(head, state.settings.skin,
+                                            Modifier.fillMaxSize(), state.settings.bodyType)
+                                    },
+                                    onPreview = { previewHead = head },
+                                    onAction = {
+                                        if (owned) onEquipHead(head) else pendingHeadBuy = head
+                                    })
+                            }
+                            repeat(columns - group.size) { Spacer(Modifier.weight(1f)) }
+                        }
+                    }
+                } else {
+                    item { PlayformSectionTitle(tx(lang, "body_title"), tx(lang, "body_soon_hint")) }
+                    items(SnakeBodyType.entries.toList().chunked(columns)) { group ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            group.forEach { body ->
+                                val owned = body.isFree || body.key in state.settings.ownedBodyKeys
+                                StyleLabItemCard(tx(lang, "body_${body.key}"), previewBody == body,
+                                    owned, state.settings.bodyType == body, body.priceCoins,
+                                    state.stats.coins, lang, Modifier.weight(1f),
+                                    preview = {
+                                        // Real renderer, including distinct Crystal and Smooth geometry.
+                                        BodyStylePreview(body, state.settings.skin,
+                                            state.settings.headStyle, Modifier.fillMaxSize())
+                                    },
+                                    onPreview = { previewBody = body },
+                                    onAction = {
+                                        if (owned) onEquipBody(body) else pendingBodyBuy = body
+                                    })
+                            }
+                            repeat(columns - group.size) { Spacer(Modifier.weight(1f)) }
+                        }
                     }
                 }
+            } else if (tab == "themes") {
+                item { PlayformSectionTitle(tx(lang, "game_themes"), tx(lang, "theme_shop_hint")) }
+                items(GameTheme.entries.filterNot { it.isFree }.chunked(columns)) { group ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        group.forEach { theme ->
+                            val owned = theme.key in state.settings.ownedThemeKeys
+                            StyleLabItemCard(themeTitle(theme, lang), previewTheme == theme,
+                                owned, state.settings.theme == theme, theme.priceCoins,
+                                state.stats.coins, lang, Modifier.weight(1f),
+                                preview = {
+                                    ThemeMiniPreview(theme, state.settings.skin, Modifier.fillMaxSize())
+                                },
+                                onPreview = { previewTheme = theme },
+                                onAction = {
+                                    if (owned) onApplyTheme(theme)
+                                    else pendingThemeBuy = theme
+                                })
+                        }
+                        repeat(columns - group.size) { Spacer(Modifier.weight(1f)) }
+                    }
+                }
+                item { Text(tx(lang, "theme_free_hint"),
+                    color = Playform.TextSecondary, fontSize = 12.sp) }
+            } else if (tab == "coins") {
+                item { PlayformSectionTitle(tx(lang, "coin_shop_title"), tx(lang, "coin_shop_info")) }
+                if (coinPriceCatalog != null && coinPriceState == CoinPriceCatalog.State.UNAVAILABLE) {
+                    item {
+                        OutlinedButton(onClick = { coinPriceCatalog.refresh() }) {
+                            Text(if (lang == "ar") "إعادة تحميل الأسعار"
+                                else "Retry loading prices")
+                        }
+                    }
+                }
+                items(COIN_PACKAGES, key = { it.productId }) { pack ->
+                    PlayformCard {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("🪙", fontSize = 30.sp)
+                            Column(Modifier.weight(1f).padding(horizontal = 9.dp)) {
+                                Text("${pack.coinAmount} ${if (lang == "ar") "عملة" else "coins"}",
+                                    color = Playform.Ink, fontWeight = FontWeight.Black,
+                                    fontSize = 17.sp)
+                                Text(playPrices[pack.productId] ?: when (coinPriceState) {
+                                    CoinPriceCatalog.State.LOADING ->
+                                        if (lang == "ar") "جارٍ تحميل السعر" else "Loading price"
+                                    CoinPriceCatalog.State.UNAVAILABLE ->
+                                        if (lang == "ar") "السعر غير متاح" else "Price unavailable"
+                                    else -> tx(lang, "coin_shop_price_pending")
+                                }, color = Playform.TextSecondary, fontSize = 12.sp)
+                            }
+                        }
+                        Button(onClick = { coinPriceCatalog?.buy(pack.productId) },
+                            enabled = coinPriceCatalog?.canBuy(pack.productId) == true,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(13.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Playform.Coral, contentColor = Playform.Ink)) {
+                            Text(if (coinPriceCatalog?.canBuy(pack.productId) == true)
+                                if (lang == "ar") "الشراء عبر Google Play" else "Buy with Google Play"
+                                else tx(lang, "coin_shop_unavailable"), fontSize = 13.sp)
+                        }
+                    }
+                }
+                item {
+                    Text(coinPriceCatalog?.statusMessage ?: tx(lang, "coin_shop_no_payment"),
+                        color = Playform.TextSecondary, fontSize = 12.sp)
+                }
             }
-            item {
-                Text(
-                    coinPriceCatalog?.statusMessage ?: tx(lang, "coin_shop_no_payment"),
-                    color = Muted, fontSize = 11.sp, modifier = Modifier.padding(bottom = 12.dp)
-                )
-            }
-        } // coins tab
+            item { Spacer(Modifier.height(10.dp)) }
         }
     }
 
