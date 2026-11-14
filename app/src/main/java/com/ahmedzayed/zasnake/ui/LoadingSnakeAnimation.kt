@@ -57,7 +57,7 @@ internal fun SnakeLoadingScreen(
     }
 
     Box(
-        modifier = Modifier.fillMaxSize().background(background),
+        modifier = Modifier.fillMaxSize().background(Playform.Ink),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -66,8 +66,8 @@ internal fun SnakeLoadingScreen(
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                text = "Za Snake",
-                color = snakeColor,
+                text = "ZA.SNAKE",
+                color = Playform.White,
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Black
             )
@@ -87,21 +87,21 @@ internal fun SnakeLoadingScreen(
                     val y = centerY + sin(segment * 0.65f + wave) * waveHeight
                     val bodyRadius = (11f - segment * 0.52f).dp.toPx()
                     drawCircle(
-                        color = snakeColor.copy(alpha = 0.78f + (bodyCount - segment) * 0.018f),
+                        color = Playform.Coral.copy(alpha = 0.78f + (bodyCount - segment) * 0.018f),
                         radius = bodyRadius,
                         center = Offset(x, y)
                     )
                 }
 
                 // Subtle halo and the snake's head.
-                drawCircle(snakeColor.copy(alpha = 0.16f), radius * 1.6f, Offset(headX, centerY))
-                drawCircle(snakeColor, radius, Offset(headX, centerY))
+                drawCircle(Playform.Lavender.copy(alpha = 0.16f), radius * 1.6f, Offset(headX, centerY))
+                drawCircle(Playform.Coral, radius, Offset(headX, centerY))
 
                 val eye = Offset(headX + 4.dp.toPx(), centerY - 5.dp.toPx())
                 drawCircle(Color.White, radius = 3.6.dp.toPx(), center = eye)
-                drawCircle(Color(0xFF07150E), radius = 1.7.dp.toPx(), center = eye.copy(x = eye.x + 1.dp.toPx()))
+                drawCircle(Playform.Ink, radius = 1.7.dp.toPx(), center = eye.copy(x = eye.x + 1.dp.toPx()))
                 drawLine(
-                    color = Color(0xFFFF6F91),
+                    color = Playform.Gold,
                     start = Offset(headX + radius * 0.85f, centerY + 2.dp.toPx()),
                     end = Offset(headX + radius + 7.dp.toPx(), centerY + 3.dp.toPx()),
                     strokeWidth = 2.dp.toPx(),

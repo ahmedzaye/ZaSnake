@@ -45,12 +45,13 @@ import androidx.compose.ui.unit.sp
 import java.util.Calendar
 import androidx.compose.ui.platform.LocalConfiguration
 import com.ahmedzayed.zasnake.language.DeviceLanguage
+import com.ahmedzayed.zasnake.ui.Playform
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
-private val WheelAccent = Color(0xFF00FF88)
-private val WheelText = Color(0xFFE2EEE7)
-private val WheelMuted = Color(0xFF97AAA2)
+private val WheelAccent = Playform.Ink
+private val WheelText = Playform.Ink
+private val WheelMuted = Playform.TextSecondary
 private val WheelRowHeight = 48.dp
 private const val VisibleWheelRows = 5
 
@@ -83,7 +84,7 @@ fun AgeGateScreen(onSubmit: (day: Int, month: Int, year: Int) -> Boolean) {
 
     BackHandler(enabled = true) { /* No age-gate bypass with the system back gesture. */ }
     Box(
-        Modifier.fillMaxSize().background(Color(0xFF050A0E)).safeDrawingPadding().padding(20.dp),
+        Modifier.fillMaxSize().background(Playform.Cream).safeDrawingPadding().padding(20.dp),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -91,16 +92,16 @@ fun AgeGateScreen(onSubmit: (day: Int, month: Int, year: Int) -> Boolean) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
-            Text("Za Snake", color = WheelAccent, fontSize = 34.sp, fontWeight = FontWeight.Black)
+            Text("ZA.SNAKE", color = Playform.Ink, fontSize = 30.sp, fontWeight = FontWeight.Black)
             Text(
                 if (arabic) "ما تاريخ ميلادك؟" else "What is your date of birth?",
-                color = Color.White, fontWeight = FontWeight.Bold, fontSize = 23.sp,
+                color = Playform.Ink, fontWeight = FontWeight.Black, fontSize = 24.sp,
                 textAlign = TextAlign.Center
             )
             Text(
                 if (arabic) "نستخدم فئتك العمرية لاختيار إعدادات مناسبة. لا يتم حفظ تاريخ ميلادك كاملًا."
                 else "We use your age group to apply appropriate settings. Your full birth date is not stored.",
-                color = Color(0xFFC5D5CE), fontSize = 13.sp, textAlign = TextAlign.Center
+                color = Playform.TextSecondary, fontSize = 14.sp, textAlign = TextAlign.Center
             )
             // All three wheels start on a blank placeholder. Nothing is selected for the player.
             Row(
@@ -131,20 +132,27 @@ fun AgeGateScreen(onSubmit: (day: Int, month: Int, year: Int) -> Boolean) {
             }
             if (dateComplete && !valid) Text(
                 if (arabic) "اختر تاريخ ميلاد صحيحًا وغير مستقبلي." else "Choose a valid date that is not in the future.",
-                color = Color(0xFFFFC7A3), fontSize = 12.sp, textAlign = TextAlign.Center
+                color = Playform.CoralText, fontSize = 13.sp, textAlign = TextAlign.Center
             )
             if (error) Text(
                 if (arabic) "تعذّر حفظ الاختيار، حاول مرة أخرى." else "Could not save your selection. Please retry.",
-                color = Color(0xFFFF8B99), fontSize = 12.sp
+                color = Playform.CoralText, fontSize = 13.sp
             )
             Button(
                 onClick = {
                     if (valid) error = !onSubmit(day!!, month!!, year!!)
                 },
                 enabled = valid,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                    containerColor = Playform.Coral,
+                    contentColor = Playform.Ink,
+                    disabledContainerColor = Playform.PaleLavender,
+                    disabledContentColor = Playform.TextSecondary
+                ),
+                shape = RoundedCornerShape(15.dp)
             ) {
-                Text(if (arabic) "متابعة" else "Continue")
+                Text(if (arabic) "متابعة" else "Continue", fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -194,7 +202,7 @@ private fun AgeDateWheel(
         ) {
             Box(
                 modifier = Modifier.fillMaxWidth().height(WheelRowHeight)
-                    .background(Color(0xFF153025), RoundedCornerShape(12.dp))
+                    .background(Playform.PaleLavender, RoundedCornerShape(12.dp))
             )
             LazyColumn(
                 modifier = Modifier.fillMaxSize().semantics { contentDescription = label },

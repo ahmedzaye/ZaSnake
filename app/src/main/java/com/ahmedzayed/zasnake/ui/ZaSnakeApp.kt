@@ -313,7 +313,24 @@ private fun paletteFor(theme: GameTheme): ZaPalette = when (theme) {
     )
 }
 
-private val LocalZaPalette = staticCompositionLocalOf { paletteFor(GameTheme.NIGHT) }
+// The game-board uses the actual purchased theme independently of PLAYFORM menus.
+private val LocalBoardPalette = staticCompositionLocalOf { paletteFor(GameTheme.NIGHT) }
+private fun playformPalette(): ZaPalette = paletteFor(GameTheme.LIGHT).copy(
+    bg = Playform.Cream, panel = Playform.White, panel2 = Playform.White,
+    accent = Playform.Coral, muted = Playform.TextSecondary,
+    gold = Playform.GoldText, blue = Playform.Ink,
+    primaryText = Playform.Ink, secondaryText = Playform.TextSecondary,
+    border = Playform.Border, divider = Playform.Border,
+    selectedPanel = Playform.PaleLavender, chipBackground = Playform.White,
+    buttonText = Playform.Ink, joystickGlow = Playform.PaleLavender,
+    joystickGlowClear = Color.Transparent, joystickRing = Playform.Lavender,
+    joystickInner = Playform.PaleLavender, joystickKnob = Playform.Coral,
+    joystickHighlight = Playform.White, joystickHint = Playform.TextSecondary,
+    overlay = Color(0xCE11152A), homeTop = Playform.Cream,
+    homeBottom = Playform.Cream, scoreLabel = Playform.TextSecondary,
+    statsTile = Playform.White
+)
+private val LocalZaPalette = staticCompositionLocalOf { playformPalette() }
 // Android's animator-duration scale (including "Remove animations") is respected.
 private val LocalVisualMotionEnabled = staticCompositionLocalOf { true }
 private data class RewardPop(val id: Long, val coins: Int)
@@ -547,7 +564,8 @@ fun ZaSnakeApp(
         }
     }
     val layoutDirection = if (language == "ar") LayoutDirection.Rtl else LayoutDirection.Ltr
-    val selectedPalette = paletteFor(state.settings.theme)
+    val selectedPalette = playformPalette()
+    val selectedBoardPalette = paletteFor(state.settings.theme)
     val lifecycleOwner = LocalLifecycleOwner.current
     val localContext = LocalContext.current
     val activity = localContext.findActivity()
@@ -569,8 +587,8 @@ fun ZaSnakeApp(
             window.statusBarColor = selectedPalette.bg.toArgb()
             window.navigationBarColor = selectedPalette.bg.toArgb()
             WindowCompat.getInsetsController(window, rootView).apply {
-                isAppearanceLightStatusBars = state.settings.theme == GameTheme.LIGHT || state.settings.theme == GameTheme.DESERT
-                isAppearanceLightNavigationBars = state.settings.theme == GameTheme.LIGHT || state.settings.theme == GameTheme.DESERT
+                isAppearanceLightStatusBars = true
+                isAppearanceLightNavigationBars = true
             }
         }
     }
@@ -684,6 +702,7 @@ fun ZaSnakeApp(
     androidx.compose.runtime.CompositionLocalProvider(
         LocalLayoutDirection provides layoutDirection,
         LocalZaPalette provides selectedPalette,
+        LocalBoardPalette provides selectedBoardPalette,
         LocalVisualMotionEnabled provides motionEnabled
     ) {
         Surface(modifier = Modifier.fillMaxSize().safeDrawingPadding(), color = Bg, contentColor = PrimaryText) {
@@ -787,8 +806,8 @@ fun ZaSnakeApp(
         androidx.compose.runtime.CompositionLocalProvider(LocalLayoutDirection provides layoutDirection) {
         AlertDialog(
             onDismissRequest = { },
-            title = { Text(if (language == "ar") "وجدنا جولتين مختلفتين" else "Two different rounds found", color = selectedPalette.accent, fontWeight = FontWeight.Bold) },
-            text = { Text(if (language == "ar") "هنحتفظ بإحصائياتك وإنجازاتك، لكن محتاجين نعرف أي جولة تريد استكمالها." else "Your stats and achievements will merge. Choose which round you want to continue.", color = selectedPalette.secondaryText) },
+            title = { Text(if (language == "ar") "وجدنا جولتين مختلفتين" else "Two different rounds found", color = Playform.Ink, fontWeight = FontWeight.Bold) },
+            text = { Text(if (language == "ar") "هنحتفظ بإحصائياتك وإنجازاتك، لكن محتاجين نعرف أي جولة تريد استكمالها." else "Your stats and achievements will merge. Choose which round you want to continue.", color = Playform.TextSecondary) },
             confirmButton = {
                 TextButton(onClick = {
                     val resolution = viewModel.resolveRoundConflict(true)
@@ -797,7 +816,7 @@ fun ZaSnakeApp(
                         if (resolution.fromPgsConflict) playGamesBridge.resolvePendingConflict(resolution.payload, resolution.chooseServerSnapshot, done)
                         else playGamesBridge.saveBundle(resolution.payload, done)
                     }
-                }) { Text(if (language == "ar") "استخدام الجولة السحابية" else "Use cloud round", color = selectedPalette.accent) }
+                }) { Text(if (language == "ar") "استخدام الجولة السحابية" else "Use cloud round", color = Playform.Ink) }
             },
             dismissButton = {
                 TextButton(onClick = {
@@ -807,11 +826,11 @@ fun ZaSnakeApp(
                         if (resolution.fromPgsConflict) playGamesBridge.resolvePendingConflict(resolution.payload, resolution.chooseServerSnapshot, done)
                         else playGamesBridge.saveBundle(resolution.payload, done)
                     }
-                }) { Text(if (language == "ar") "الاحتفاظ بجولة هذا الجهاز" else "Keep this device's round", color = selectedPalette.muted) }
+                }) { Text(if (language == "ar") "الاحتفاظ بجولة هذا الجهاز" else "Keep this device's round", color = Playform.TextSecondary) }
             },
-            containerColor = selectedPalette.panel,
-            titleContentColor = selectedPalette.accent,
-            textContentColor = selectedPalette.primaryText
+            containerColor = Playform.Cream,
+            titleContentColor = Playform.Ink,
+            textContentColor = Playform.Ink
         )
         }
     }
@@ -831,22 +850,22 @@ fun ZaSnakeApp(
         }
         AlertDialog(
             onDismissRequest = viewModel::dismissConfirmation,
-            title = { Text(title, color = selectedPalette.accent, fontWeight = FontWeight.Bold) },
-            text = { Text(message, color = selectedPalette.secondaryText) },
+            title = { Text(title, color = Playform.Ink, fontWeight = FontWeight.Bold) },
+            text = { Text(message, color = Playform.TextSecondary) },
             confirmButton = {
                 TextButton(onClick = {
                     if (pending == ConfirmationAction.EXIT_APP) {
                         viewModel.dismissConfirmation()
                         onExitApp()
                     } else viewModel.confirmPendingAction()
-                }) { Text(tx(language, "confirm"), color = selectedPalette.accent) }
+                }) { Text(tx(language, "confirm"), color = Playform.Ink) }
             },
             dismissButton = {
-                TextButton(onClick = viewModel::dismissConfirmation) { Text(tx(language, "cancel"), color = selectedPalette.muted) }
+                TextButton(onClick = viewModel::dismissConfirmation) { Text(tx(language, "cancel"), color = Playform.TextSecondary) }
             },
-            containerColor = selectedPalette.panel,
-            titleContentColor = selectedPalette.accent,
-            textContentColor = selectedPalette.primaryText
+            containerColor = Playform.Cream,
+            titleContentColor = Playform.Ink,
+            textContentColor = Playform.Ink
         )
         }
     }
@@ -855,9 +874,16 @@ fun ZaSnakeApp(
 @Composable
 private fun ScreenHeader(title: String, onBack: () -> Unit, trailing: (@Composable () -> Unit)? = null) {
     Row(Modifier.fillMaxWidth().padding(bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-        IconButtonFrame(onClick = onBack) { androidx.compose.material3.Icon(Icons.Rounded.ArrowBack, null, tint = Muted) }
+        IconButtonFrame(onClick = onBack) {
+            androidx.compose.material3.Icon(
+                if (LocalLayoutDirection.current == LayoutDirection.Rtl) Icons.Rounded.KeyboardArrowRight
+                else Icons.Rounded.ArrowBack,
+                contentDescription = if (LocalLayoutDirection.current == LayoutDirection.Rtl) "رجوع" else "Back",
+                tint = Playform.Ink
+            )
+        }
         Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
-            Text(title, color = Neon, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+            Text(title, color = Playform.Ink, fontSize = 22.sp, fontWeight = FontWeight.Black)
         }
         if (trailing != null) trailing() else Spacer(Modifier.size(44.dp))
     }
@@ -875,75 +901,110 @@ private fun HomeScreen(
     onClaimAchievements: () -> Unit
 ) {
     val lang = state.settings.language
-    Column(
-        Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(LocalZaPalette.current.homeTop, Bg, LocalZaPalette.current.homeBottom))).padding(horizontal = 20.dp, vertical = 14.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+    val ar = lang == "ar"
+    val claimableCount = ACHIEVEMENTS.count { achievement ->
+        achievement.id !in state.stats.claimedAchievementRewards &&
+            (achievement.id in state.stats.unlockedAchievements ||
+                achievement.progress(state.stats) >= achievement.target)
+    }
+    LazyColumn(
+        Modifier.fillMaxSize().background(Playform.Cream)
+            .padding(horizontal = 17.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text("Za Snake", color = Neon, fontSize = 28.sp, fontWeight = FontWeight.Black, letterSpacing = 0.5.sp)
-                Text(tx(lang, "app_tagline"), color = Muted, fontSize = 12.sp)
+        item {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("ZA.SNAKE", color = Playform.Ink, fontSize = 21.sp,
+                    fontWeight = FontWeight.Black, modifier = Modifier.weight(1f))
+                PlayformStatusPill("🪙 ${state.stats.coins}",
+                    color = Playform.Ink, background = Playform.White)
+                IconButtonFrame(onClick = onSettings) {
+                    androidx.compose.material3.Icon(Icons.Rounded.Settings,
+                        contentDescription = tx(lang, "settings"), tint = Playform.Ink)
+                }
             }
         }
-        HorizontalDivider(color = DividerColor)
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            Row(
-                modifier = Modifier.clip(RoundedCornerShape(18.dp)).background(LocalZaPalette.current.statsTile)
-                    .border(1.dp, BorderColor, RoundedCornerShape(18.dp)).padding(horizontal = 13.dp, vertical = 7.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(7.dp)
-            ) {
-                Text("🪙", fontSize = 17.sp)
-                Text(state.stats.coins.toString(), color = Gold, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                Text(tx(lang, "coin_unit"), color = SecondaryText, fontSize = 11.sp)
+        item {
+            PlayformDarkCard {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        PlayformTag("ZA.SNAKE / PLAYFORM")
+                        Text(if (ar) "جاهز للعب؟" else "READY TO PLAY?",
+                            color = Playform.White, fontSize = 27.sp,
+                            lineHeight = 34.sp, fontWeight = FontWeight.Black)
+                        Text(if (ar) "اختار وضعك وحقق رقمًا جديدًا" else "Pick a mode. Beat your best.",
+                            color = Playform.LightOnDark, fontSize = 13.sp, lineHeight = 20.sp)
+                    }
+                    Image(painter = painterResource(R.drawable.za_snake_mascot),
+                        contentDescription = null,
+                        modifier = Modifier.size(108.dp).clip(RoundedCornerShape(21.dp)),
+                        contentScale = ContentScale.Crop)
+                }
+                Button(onClick = onNewGame,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 55.dp),
+                    shape = RoundedCornerShape(17.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Playform.Coral, contentColor = Playform.Ink)) {
+                    androidx.compose.material3.Icon(Icons.Rounded.PlayArrow, contentDescription = null)
+                    Text(if (ar) "العب الآن" else "PLAY NOW", fontSize = 17.sp,
+                        fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 8.dp))
+                }
+                if (state.hasSavedGame) {
+                    OutlinedButton(onClick = onResume, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Playform.White)) {
+                        Text(tx(lang, "resume_game"), fontSize = 13.sp)
+                    }
+                }
             }
         }
-        BoxWithConstraints(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-            val heroSize = min(min(maxWidth.value * 0.70f, maxHeight.value * 0.52f), 230f).dp.coerceAtLeast(80.dp)
-            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                Image(
-                    painter = painterResource(R.drawable.za_snake_mascot),
-                    contentDescription = "Za Snake mascot",
-                    modifier = Modifier.size(heroSize).clip(RoundedCornerShape(28.dp)).border(1.dp, BorderColor, RoundedCornerShape(28.dp)),
-                    contentScale = ContentScale.Crop
-                )
-                Spacer(Modifier.height(14.dp))
-                Text(tx(lang, "ready"), color = PrimaryText, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-                Text(tx(lang, "home_description"), color = Muted, fontSize = 13.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 4.dp))
+        item {
+            PlayformSectionTitle(if (ar) "استكشف اللعبة" else "Explore Za Snake",
+                if (ar) "مكافآتك وشكلك وإنجازاتك في مكان واحد" else "Rewards, style and achievements")
+        }
+        item {
+            // This is a scroll-content action shelf, NOT a fixed bottom navigation bar.
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                PlayformHomeTile(if (ar) "المكافآت" else "Rewards", "🎁",
+                    Playform.PaleCoral, Modifier.weight(1f), onDaily)
+                PlayformHomeTile(if (ar) "التخصيص" else "Style Lab", "🐍",
+                    Playform.PaleLavender, Modifier.weight(1f), onShop)
+                PlayformHomeTile(if (ar) "الإنجازات" else "Achievements", "🏆",
+                    Playform.PaleMint, Modifier.weight(1f), onClaimAchievements)
             }
         }
-        PrimaryActionButton(tx(lang, "new_game"), Icons.Rounded.PlayArrow, onNewGame)
-        if (state.hasSavedGame) {
-            OutlinedActionButton(tx(lang, "resume_game"), Icons.Rounded.Replay, onResume)
-        }
-        PrimaryActionButton(tx(lang, "shop"), Icons.Rounded.ShoppingBag, onShop)
-        OutlinedActionButton(tx(lang, "daily_rewards"), Icons.Rounded.CardGiftcard, onDaily)
-        val claimableCount = ACHIEVEMENTS.count { achievement ->
-            achievement.id !in state.stats.claimedAchievementRewards &&
-                (achievement.id in state.stats.unlockedAchievements ||
-                    achievement.progress(state.stats) >= achievement.target)
-        }
-        if (claimableCount > 0) {
-            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
-                .background(Gold.copy(alpha = .12f))
-                .border(1.dp, Gold.copy(alpha = .55f), RoundedCornerShape(12.dp))
-                .clickable(onClick = onClaimAchievements)
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                androidx.compose.material3.Icon(Icons.Rounded.CardGiftcard, null, tint = Gold, modifier = Modifier.size(20.dp))
-                Text(if (lang == "ar") "استلم المكافآت!" else "Claim your rewards!",
-                    color = PrimaryText, fontSize = 13.sp, fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f))
-                Text(claimableCount.toString(), color = Gold, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+        if (claimableCount > 0) item {
+            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
+                .background(Playform.Gold).clickable(onClick = onClaimAchievements)
+                .padding(horizontal = 14.dp, vertical = 13.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                Text("🎁", fontSize = 22.sp)
+                Text(if (ar) "عندك ${claimableCount} مكافآت جاهزة للاستلام!"
+                    else "${claimableCount} achievement rewards ready!",
+                    modifier = Modifier.weight(1f).padding(horizontal = 9.dp),
+                    color = Playform.Ink, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                androidx.compose.material3.Icon(Icons.Rounded.KeyboardArrowRight,
+                    contentDescription = null, tint = Playform.Ink)
             }
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            SecondaryTile(tx(lang, "stats_achievements"), Icons.Rounded.EmojiEvents, Modifier.weight(1f), onStats)
-            SecondaryTile(tx(lang, "settings"), Icons.Rounded.Settings, Modifier.weight(1f), onSettings)
+        item {
+            CloudStatusLine(state, lang)
         }
-        CloudStatusLine(state, lang)
+        item { Spacer(Modifier.height(8.dp)) }
+    }
+}
+
+@Composable
+private fun PlayformHomeTile(label: String, emoji: String, color: Color, modifier: Modifier, onClick: () -> Unit) {
+    Column(modifier.clip(RoundedCornerShape(20.dp)).background(color)
+        .clickable(onClick = onClick).padding(horizontal = 5.dp, vertical = 14.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(9.dp)) {
+        Text(emoji, fontSize = 28.sp)
+        Text(label, color = Playform.Ink, fontSize = 12.sp, fontWeight = FontWeight.Bold,
+            lineHeight = 16.sp, textAlign = TextAlign.Center, minLines = 2)
     }
 }
 
@@ -956,14 +1017,16 @@ private fun DailyRewardsScreen(
     onRefresh: () -> Unit
 ) {
     val lang = state.settings.language
+    val ar = lang == "ar"
     val date = state.dailyDate
     val stats = state.stats
     val progress = stats.dailyProgress(date)
     val clockIsValid = date >= stats.latestDailyDate
     val loginClaimed = date in stats.claimedDailyLogins
-    val nextDay = if (loginClaimed) stats.claimedDailyLogins[date] ?: 1 else stats.nextDailyLoginDay(date)
+    val nextDay = if (loginClaimed) stats.claimedDailyLogins[date] ?: 1
+        else stats.nextDailyLoginDay(date)
     val currentCoins = DAILY_LOGIN_COIN_SEQUENCE[(nextDay - 1).coerceIn(0, 6)]
-    // Periodic date rollover, including when the daily screen is left open at midnight UTC.
+    // Same UTC rollover and reward eligibility as the original screen.
     LaunchedEffect(date) {
         while (true) {
             kotlinx.coroutines.delay(30_000)
@@ -971,94 +1034,196 @@ private fun DailyRewardsScreen(
         }
     }
     LazyColumn(
-        Modifier.fillMaxSize().background(Bg).padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        Modifier.fillMaxSize().background(Playform.Cream)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(13.dp)
     ) {
         item { ScreenHeader(tx(lang, "daily_rewards"), onBack) }
         item {
-            Card(colors = CardDefaults.cardColors(containerColor = SelectedPanel), shape = RoundedCornerShape(14.dp)) {
-                Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                    Text("🎁 ${tx(lang, "daily_login")}", color = Neon, fontWeight = FontWeight.Bold, fontSize = 17.sp)
-                    Text(tx(lang, "daily_login_hint"), color = Muted, fontSize = 11.sp)
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        DAILY_LOGIN_COIN_SEQUENCE.forEachIndexed { index, amount ->
-                            val day = index + 1
-                            val chosen = day == nextDay
-                            Column(
-                                modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp))
-                                    .background(if (chosen) Neon.copy(alpha = 0.15f) else Panel)
-                                    .border(1.dp, if (chosen) Neon else BorderColor, RoundedCornerShape(8.dp))
-                                    .padding(vertical = 7.dp, horizontal = 1.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(3.dp)
-                            ) {
-                                Text("${tx(lang, "daily_day")} $day", color = Muted, fontSize = 8.sp, maxLines = 1)
-                                Text("🪙$amount", color = if (chosen) Gold else PrimaryText, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                            }
-                        }
+            PlayformPageIntro(if (ar) "مكافآتك اليومية" else "Daily Rewards",
+                if (ar) "كل يوم فرصة جديدة لتجمع مكافآت أكثر"
+                else "A new chance to earn rewards every day")
+        }
+        item {
+            PlayformDarkCard {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        PlayformTag("DAILY LOGIN")
+                        Text(tx(lang, "daily_login"), color = Playform.White,
+                            fontWeight = FontWeight.Black, fontSize = 20.sp)
+                        Text(tx(lang, "daily_login_hint"),
+                            color = Playform.LightOnDark, fontSize = 13.sp, lineHeight = 19.sp)
                     }
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("$date · +$currentCoins 🪙", color = Gold, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                        if (loginClaimed) {
-                            Text(tx(lang, "daily_claimed"), color = Neon, fontSize = 12.sp)
-                        } else {
-                            Button(onClick = { onClaimLogin() }, enabled = clockIsValid, colors = ButtonDefaults.buttonColors(containerColor = Neon, contentColor = ButtonText),
-                                modifier = Modifier.height(34.dp), contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)) {
-                                Text(tx(lang, "claim_short"), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                            }
+                    Text("🎁", fontSize = 46.sp)
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    DAILY_LOGIN_COIN_SEQUENCE.forEachIndexed { index, coins ->
+                        val day = index + 1
+                        val current = day == nextDay
+                        Column(Modifier.weight(1f).clip(RoundedCornerShape(10.dp))
+                            .background(if (current) Playform.Gold else Color(0xFF45415E))
+                            .padding(vertical = 10.dp, horizontal = 1.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                            Text("D$day", color = if (current) Playform.Ink else Playform.LightOnDark,
+                                fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                            Text("$coins", color = if (current) Playform.Ink else Playform.White,
+                                fontWeight = FontWeight.Black, fontSize = 12.sp)
                         }
                     }
                 }
+                if (loginClaimed) {
+                    PlayformStatusPill(tx(lang, "daily_claimed"),
+                        color = Playform.Ink, background = Playform.Gold)
+                } else {
+                    Button(
+                        onClick = { onClaimLogin() },
+                        enabled = clockIsValid,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
+                        shape = RoundedCornerShape(15.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Playform.Coral,
+                            contentColor = Playform.Ink)
+                    ) {
+                        Text(if (ar) "استلم $currentCoins عملة" else "CLAIM $currentCoins COINS",
+                            fontWeight = FontWeight.Black, fontSize = 15.sp)
+                    }
+                }
+                Text(date, color = Playform.LightOnDark, fontSize = 12.sp)
             }
         }
-        if (!clockIsValid) {
-            item { Text(tx(lang, "daily_clock_warning"), color = Gold, fontSize = 12.sp) }
+        if (!clockIsValid) item {
+            PlayformCard(background = Color(0xFFFFF0D2)) {
+                Text(tx(lang, "daily_clock_warning"), color = Playform.Ink,
+                    fontSize = 13.sp, lineHeight = 19.sp)
+            }
         }
         item {
-            Text("🎯 ${tx(lang, "daily_challenges")}", color = Neon, fontWeight = FontWeight.Bold, fontSize = 17.sp)
-            Text("${tx(lang, "daily_max")}: ${DailyChallenge.entries.sumOf { it.coins }} 🪙", color = Gold, fontSize = 11.sp)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    PlayformSectionTitle(tx(lang, "daily_challenges"),
+                        if (ar) "أنجز التحديات واستلم مكافآتك" else "Complete missions to collect coins")
+                }
+                PlayformStatusPill("🪙 ${DailyChallenge.entries.sumOf { it.coins }}",
+                    color = Playform.Ink, background = Playform.Gold)
+            }
         }
         items(DailyChallenge.entries.toList(), key = { it.id }) { challenge ->
             val current = challenge.progress(progress).coerceAtLeast(0L)
             val finished = current >= challenge.target
             val claimed = challenge.claimId(date) in stats.claimedDailyChallenges
             val ratio = (current.toFloat() / challenge.target.toFloat()).coerceIn(0f, 1f)
-            Card(colors = CardDefaults.cardColors(containerColor = if (finished) SelectedPanel else Panel),
-                shape = RoundedCornerShape(11.dp), modifier = Modifier.fillMaxWidth()) {
-                Row(Modifier.fillMaxWidth().heightIn(min = 72.dp).padding(9.dp),
-                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(challenge.icon, fontSize = 24.sp)
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(if (lang == "ar") challenge.arName else challenge.enName, color = PrimaryText,
-                            fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(if (lang == "ar") challenge.arDescription else challenge.enDescription,
-                            color = Muted, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            LinearProgressIndicator(progress = { ratio }, modifier = Modifier.weight(1f).height(4.dp).clip(CircleShape),
-                                color = Neon, trackColor = BorderColor)
-                            Text("${current.coerceAtMost(challenge.target)}/${challenge.target}", color = Muted, fontSize = 10.sp)
-                        }
+            PlayformCard(background = if (finished) Color(0xFFFFFDF6) else Playform.White) {
+                Row(verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Box(Modifier.size(46.dp).clip(RoundedCornerShape(14.dp))
+                        .background(Playform.PaleCoral), contentAlignment = Alignment.Center) {
+                        Text(challenge.icon, fontSize = 24.sp)
                     }
-                    Column(Modifier.width(77.dp), horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text("🪙 ${challenge.coins}", color = Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                        Text(if (ar) challenge.arName else challenge.enName,
+                            color = Playform.Ink, fontWeight = FontWeight.Black, fontSize = 15.sp)
+                        Text(if (ar) challenge.arDescription else challenge.enDescription,
+                            color = Playform.TextSecondary, fontSize = 12.sp, lineHeight = 17.sp)
+                        PlayformProgressBar(ratio)
+                        Text("${current.coerceAtMost(challenge.target)} / ${challenge.target}",
+                            color = Playform.TextSecondary, fontSize = 12.sp)
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                        Text("🪙 ${challenge.coins}", color = Playform.GoldText,
+                            fontWeight = FontWeight.Black, fontSize = 12.sp)
                         when {
-                            claimed -> Text(tx(lang, "claimed_short"), color = Neon, fontSize = 10.sp)
-                            finished -> Button(onClick = { onClaimChallenge(challenge.id) }, enabled = clockIsValid,
-                                modifier = Modifier.fillMaxWidth().height(30.dp),
-                                contentPadding = PaddingValues(horizontal = 2.dp, vertical = 0.dp),
-                                shape = RoundedCornerShape(8.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Neon, contentColor = ButtonText)) {
-                                Text(tx(lang, "claim_short"), fontSize = 11.sp, maxLines = 1)
-                            }
-                            else -> Text(tx(lang, "reward_pending"), color = Muted, fontSize = 10.sp)
+                            claimed -> PlayformStatusPill(tx(lang, "claimed_short"),
+                                color = Color(0xFF286C5B), background = Playform.PaleMint)
+                            finished -> Button(
+                                onClick = { onClaimChallenge(challenge.id) },
+                                enabled = clockIsValid,
+                                modifier = Modifier.heightIn(min = 44.dp),
+                                contentPadding = PaddingValues(horizontal = 11.dp),
+                                shape = RoundedCornerShape(11.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Playform.Coral, contentColor = Playform.Ink)
+                            ) { Text(tx(lang, "claim_short"), fontSize = 12.sp) }
+                            else -> Text(tx(lang, "reward_pending"), color = Playform.TextSecondary,
+                                fontSize = 11.sp)
                         }
                     }
                 }
             }
         }
-        item { Text(tx(lang, "daily_reset"), color = Muted, fontSize = 11.sp, modifier = Modifier.padding(bottom = 12.dp)) }
+        item {
+            Text(tx(lang, "daily_reset"), color = Playform.TextSecondary,
+                fontSize = 12.sp, modifier = Modifier.fillMaxWidth()
+                    .padding(vertical = 8.dp), textAlign = TextAlign.Center)
+        }
+    }
+}
+
+@Composable
+private fun StyleLabItemCard(
+    title: String,
+    selected: Boolean,
+    owned: Boolean,
+    equipped: Boolean,
+    price: Int,
+    balance: Long,
+    language: String,
+    modifier: Modifier = Modifier,
+    preview: @Composable () -> Unit,
+    onPreview: () -> Unit,
+    onAction: () -> Unit
+) {
+    val ar = language == "ar"
+    Column(
+        modifier.clip(RoundedCornerShape(18.dp))
+            .background(if (selected) Playform.PaleLavender else Playform.White)
+            .border(if (selected) 2.dp else 1.dp,
+                if (selected) Playform.Ink else Playform.Border,
+                RoundedCornerShape(18.dp))
+            .clickable(onClick = onPreview).padding(10.dp),
+        verticalArrangement = Arrangement.spacedBy(7.dp)
+    ) {
+        Box(Modifier.fillMaxWidth().height(76.dp).clip(RoundedCornerShape(12.dp))
+            .background(Playform.Ink)) {
+            preview()
+            if (selected) {
+                Box(Modifier.align(Alignment.TopEnd).padding(5.dp).size(20.dp)
+                    .clip(CircleShape).background(Playform.Gold),
+                    contentAlignment = Alignment.Center) {
+                    androidx.compose.material3.Icon(Icons.Rounded.CheckCircle, null,
+                        tint = Playform.Ink, modifier = Modifier.size(16.dp))
+                }
+            }
+        }
+        Text(title, color = Playform.Ink, fontSize = 13.sp,
+            fontWeight = FontWeight.Black, minLines = 1, maxLines = 2)
+        Text(when {
+            equipped -> if (ar) "مُجهّز حاليًا" else "Equipped"
+            owned -> if (ar) "مملوك" else "Owned"
+            else -> "🪙 $price"
+        }, color = Playform.TextSecondary, fontSize = 12.sp)
+        Button(
+            onClick = onAction,
+            enabled = !equipped && (owned || balance >= price),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
+            contentPadding = PaddingValues(horizontal = 5.dp, vertical = 7.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Playform.Coral, contentColor = Playform.Ink,
+                disabledContainerColor = Playform.PaleLavender,
+                disabledContentColor = Playform.TextSecondary)
+        ) {
+            Text(when {
+                equipped -> if (ar) "مُجهّز ✓" else "Equipped ✓"
+                owned -> if (ar) "تجهيز" else "Equip"
+                else -> if (ar) "شراء" else "Buy"
+            }, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+        }
+        if (!owned && balance < price) {
+            Text(if (ar) "ناقصك ${price - balance} عملة"
+                else "${price - balance} more coins needed",
+                color = Playform.TextSecondary, fontSize = 11.sp, lineHeight = 15.sp)
+        }
     }
 }
 
@@ -1094,339 +1259,232 @@ private fun ShopScreen(
     var previewTheme by remember(state.settings.theme) {
         mutableStateOf(state.settings.theme.takeUnless { it.isFree } ?: GameTheme.OCEAN)
     }
-    val selectedColor = when (tab) {
-        "skins" -> snakeSkinColors(previewSkin).first()
-        "themes" -> paletteFor(previewTheme).accent
-        else -> Gold
-    }
     var pendingThemeBuy by remember { mutableStateOf<GameTheme?>(null) }
 
-    Column(Modifier.fillMaxSize().background(Bg).padding(horizontal = 16.dp, vertical = 12.dp)) {
-        ScreenHeader(tx(lang, "shop_title"), onBack)
+    val compactInventory = LocalConfiguration.current.screenWidthDp < 360 ||
+        LocalDensity.current.fontScale > 1.25f
+    val columns = if (compactInventory) 1 else 2
+    Column(Modifier.fillMaxSize().background(Playform.Cream)
+        .padding(horizontal = 16.dp, vertical = 12.dp)) {
+        ScreenHeader(if (lang == "ar") "عالم التخصيص" else "Style Lab", onBack)
+        PlayformPageIntro(
+            if (lang == "ar") "خلّي ثعبانك مميز" else "Make it your own",
+            if (lang == "ar") "جرّب العناصر قبل تجهيزها" else "Preview a look before equipping it."
+        )
+        Spacer(Modifier.height(9.dp))
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             ChoiceChip(tx(lang, "shop_skins"), tab == "skins") { tab = "skins" }
             ChoiceChip(tx(lang, "shop_themes"), tab == "themes") { tab = "themes" }
-            // No paid coin packs in v4 release. Debug keeps staging price UI
-            // for developer testing, while skins/themes remain free-coin shops.
+            // Keep paid coin packages visible only in debug, as in release v4.
             if (com.ahmedzayed.zasnake.BuildConfig.DEBUG) {
                 ChoiceChip(tx(lang, "shop_coins"), tab == "coins") { tab = "coins" }
             }
         }
-        Spacer(Modifier.height(8.dp))
-        // This preview and balance stay pinned while only the inventory scrolls.
-        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(15.dp))
-                .background(Brush.linearGradient(listOf(LocalZaPalette.current.statsTile, Panel)))
-                .border(1.dp, selectedColor.copy(alpha = .65f), RoundedCornerShape(15.dp))
-                .padding(horizontal = 12.dp, vertical = 7.dp),
-            verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(if (lang == "ar") "رصيد العملات" else "COIN BALANCE", color = Muted,
-                    fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                Text("🪙 ${state.stats.coins}", color = Gold, fontSize = 20.sp, fontWeight = FontWeight.Black)
+        Spacer(Modifier.height(9.dp))
+        PlayformDarkCard {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    PlayformTag("LIVE PREVIEW")
+                    Text(if (lang == "ar") "عاين ثعبانك" else "Your Snake",
+                        color = Playform.White, fontSize = 19.sp,
+                        fontWeight = FontWeight.Black)
+                }
+                Text("🪙 ${state.stats.coins}", color = Playform.Gold,
+                    fontSize = 16.sp, fontWeight = FontWeight.Black)
             }
             if (tab != "coins") {
-                Box(Modifier.size(90.dp, 68.dp).clip(RoundedCornerShape(11.dp)).background(Color(0xFF07131B))) {
+                Box(Modifier.fillMaxWidth()
+                    .height(if (LocalConfiguration.current.screenHeightDp < 650) 85.dp else 120.dp)
+                    .clip(RoundedCornerShape(14.dp)).background(Color(0xFF07131B))) {
                     if (tab == "skins") when (snakeTab) {
-                        "heads" -> HeadStylePreview(previewHead, state.settings.skin, Modifier.fillMaxSize(), state.settings.bodyType)
-                        "body" -> BodyStylePreview(previewBody, state.settings.skin, state.settings.headStyle, Modifier.fillMaxSize())
-                        else -> SkinPreview(previewSkin, Modifier.fillMaxSize(), state.settings.headStyle, state.settings.bodyType)
+                        "heads" -> HeadStylePreview(previewHead, state.settings.skin,
+                            Modifier.fillMaxSize(), state.settings.bodyType)
+                        "body" -> BodyStylePreview(previewBody, state.settings.skin,
+                            state.settings.headStyle, Modifier.fillMaxSize())
+                        else -> SkinPreview(previewSkin, Modifier.fillMaxSize(),
+                            state.settings.headStyle, state.settings.bodyType)
                     } else ThemeMiniPreview(previewTheme, state.settings.skin, Modifier.fillMaxSize())
                 }
+                Text(if (lang == "ar") "المعاينة لا تجهّز العنصر أو تشتريه تلقائيًا"
+                    else "Previewing does not equip or buy an item.",
+                    color = Playform.LightOnDark, fontSize = 12.sp, lineHeight = 17.sp)
             }
         }
-        Spacer(Modifier.height(8.dp))
-        LazyColumn(Modifier.weight(1f).fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        if (tab == "skins") {
-        item {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                ChoiceChip(tx(lang, "shop_colors"), snakeTab == "colors") { snakeTab = "colors" }
-                ChoiceChip(tx(lang, "shop_heads"), snakeTab == "heads") { snakeTab = "heads" }
-                ChoiceChip(tx(lang, "shop_bodies"), snakeTab == "body") { snakeTab = "body" }
-            }
-        }
-        if (snakeTab == "colors") {
-        item {
-            Text(if (lang == "ar") "ألوان الثعبان" else "SNAKE COLORS", color = PrimaryText, fontWeight = FontWeight.Black, fontSize = 15.sp)
-        }
-        items(listOf(SnakeSkin.GREEN, SnakeSkin.PURPLE, SnakeSkin.YELLOW, SnakeSkin.CYBER, SnakeSkin.ICE, SnakeSkin.FIRE) + ARAB_COLLECTION) { skin ->
-            if (skin == SnakeSkin.EGYPT) {
-                Column(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 4.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(tx(lang, "arab_collection"), color = PrimaryText,
-                        fontWeight = FontWeight.Black, fontSize = 17.sp)
-                    Text(tx(lang, "arab_collection_desc"), color = Muted, fontSize = 12.sp)
-                }
-            }
-            val owned = skin.key in state.settings.ownedSkinKeys
-            val equipped = state.settings.skin == skin
-            val price = prices.getValue(skin)
-            val color = snakeSkinColors(skin).first()
-            val active = previewSkin == skin
-            Column(
-                Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp))
-                    .background(if (active) LocalZaPalette.current.statsTile else Panel)
-                    .border(if (active) 1.5.dp else 1.dp, if (active) color else BorderColor, RoundedCornerShape(18.dp))
-                    .clickable { previewSkin = skin }.padding(12.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Box(Modifier.size(92.dp, 72.dp).clip(RoundedCornerShape(12.dp)).background(Color(0xFF07131B))) {
-                        SkinPreview(skin, Modifier.fillMaxSize(), state.settings.headStyle, state.settings.bodyType)
-                        if (active) {
-                            Box(Modifier.align(Alignment.TopEnd).padding(5.dp).size(19.dp).clip(CircleShape).background(color), contentAlignment = Alignment.Center) {
-                                androidx.compose.material3.Icon(Icons.Rounded.CheckCircle, null, tint = Color(0xFF07131B), modifier = Modifier.size(17.dp))
-                            }
-                        }
-                    }
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(tx(lang, skin.key), color = PrimaryText, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                        Text(
-                            when (skin) {
-                                SnakeSkin.GREEN -> if (lang == "ar") "أخضر كلاسيكي" else "Classic green"
-                                SnakeSkin.PURPLE -> if (lang == "ar") "بنفسجي ناعم" else "Soft purple"
-                                SnakeSkin.YELLOW -> if (lang == "ar") "أصفر مشرق" else "Bright yellow"
-                                SnakeSkin.CYBER -> if (lang == "ar") "نيون رقمي" else "Digital neon"
-                                SnakeSkin.ICE -> if (lang == "ar") "لمسة جليدية" else "Frost finish"
-                                SnakeSkin.FIRE -> if (lang == "ar") "توهج ناري" else "Fiery glow"
-                                SnakeSkin.EGYPT -> if (lang == "ar") "أحمر وفضي وأسود مع لمسة ذهبية" else "Red, ivory, black & gold"
-                                SnakeSkin.UAE -> if (lang == "ar") "أخضر زمردي ولمسة حمراء" else "Emerald and ruby accents"
-                                SnakeSkin.JORDAN -> if (lang == "ar") "شرائط داكنة وتفاصيل قرمزية" else "Dark stripes with crimson"
-                                SnakeSkin.PALESTINE -> if (lang == "ar") "أخضر زيتوني وتباين أسود وأبيض" else "Olive, ivory and onyx"
-                                SnakeSkin.KUWAIT -> if (lang == "ar") "أسود فحمي وألوان مشرقة" else "Charcoal with bright stripes"
-                                SnakeSkin.SAUDI -> if (lang == "ar") "أخضر فاخر وأبيض ولمسة ذهبية" else "Royal green, ivory and gold"
-                            }, color = Muted, fontSize = 11.sp
-                        )
-                        Text(if (owned) if (equipped) (if (lang == "ar") "مُجهّز حاليًا" else "Currently equipped") else tx(lang, "owned") else "$price 🪙", color = if (owned) Neon else Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedButton(
-                        onClick = { previewSkin = skin }, modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.75f))
-                    ) { Text(if (lang == "ar") "معاينة" else "Preview", color = color, fontWeight = FontWeight.Bold) }
-                    if (owned) {
-                        Button(
-                            onClick = { onEquip(skin) }, enabled = !equipped, modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(containerColor = Neon, contentColor = ButtonText),
-                            shape = RoundedCornerShape(12.dp)
-                        ) { Text(if (equipped) (if (lang == "ar") "مُجهّز" else "Equipped") else tx(lang, "equip"), fontWeight = FontWeight.Bold) }
-                    } else {
-                        Button(
-                            onClick = { previewSkin = skin; pendingBuy = skin }, enabled = state.stats.coins >= price,
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(containerColor = Neon, contentColor = ButtonText),
-                            shape = RoundedCornerShape(12.dp)
-                        ) { Text(tx(lang, "buy"), fontWeight = FontWeight.Bold) }
-                    }
-                }
-                if (!owned && state.stats.coins < price) {
-                    Text(if (lang == "ar") "ناقصك ${price - state.stats.coins} عملة" else "${price - state.stats.coins} more coins needed", color = Muted, fontSize = 11.sp)
-                }
-            }
-        }
-        } else if (snakeTab == "heads") {
-            item {
-                Text(tx(lang, "head_title"), color = PrimaryText, fontSize = 16.sp, fontWeight = FontWeight.Black)
-                Text(tx(lang, "head_hint"), color = Muted, fontSize = 12.sp)
-            }
-            items(SnakeHeadStyle.entries) { head ->
-                val owned = head.isFree || head.key in state.settings.ownedHeadKeys
-                val equipped = state.settings.headStyle == head
-                val highlighted = previewHead == head
-                Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp))
-                    .background(if (highlighted) SelectedPanel else Panel)
-                    .border(if (highlighted) 1.5.dp else 1.dp, if (highlighted) Neon else BorderColor, RoundedCornerShape(18.dp))
-                    .clickable { previewHead = head }.padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Box(Modifier.size(92.dp, 72.dp).clip(RoundedCornerShape(12.dp)).background(Color(0xFF07131B))) {
-                            HeadStylePreview(head, state.settings.skin, Modifier.fillMaxSize(), state.settings.bodyType)
-                        }
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                            Text(tx(lang, "head_${head.key}"), color = PrimaryText, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                            Text(if (owned) (if (equipped) (if (lang == "ar") "مُجهّز" else "Equipped") else tx(lang, "owned"))
-                                else "${head.priceCoins} 🪙", color = if (owned) Neon else Gold, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                        }
-                    }
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(onClick = { previewHead = head }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp)) {
-                            Text(if (lang == "ar") "معاينة" else "Preview", color = Neon, fontSize = 12.sp)
-                        }
-                        Button(
-                            onClick = { if (owned) onEquipHead(head) else pendingHeadBuy = head },
-                            enabled = if (owned) !equipped else state.stats.coins >= head.priceCoins,
-                            modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Neon, contentColor = ButtonText)
-                        ) {
-                            Text(if (owned) (if (equipped) (if (lang == "ar") "مُجهّز" else "Equipped") else tx(lang, "equip"))
-                                 else tx(lang, "buy"), fontWeight = FontWeight.Bold)
-                        }
-                    }
-                    if (!owned && state.stats.coins < head.priceCoins) {
-                        Text(if (lang == "ar") "ناقصك ${head.priceCoins - state.stats.coins} عملة"
-                            else "${head.priceCoins - state.stats.coins} more coins needed", color = Muted, fontSize = 11.sp)
-                    }
-                }
-            }
-        } else {
-            item {
-                Text(tx(lang, "body_title"), color = PrimaryText, fontWeight = FontWeight.Black, fontSize = 16.sp)
-                Text(tx(lang, "body_soon_hint"), color = Muted, fontSize = 12.sp)
-            }
-            items(SnakeBodyType.entries) { body ->
-                val owned = body.isFree || body.key in state.settings.ownedBodyKeys
-                val equipped = state.settings.bodyType == body
-                val highlighted = previewBody == body
-                Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp))
-                    .background(if (highlighted) SelectedPanel else Panel)
-                    .border(if (highlighted) 1.5.dp else 1.dp, if (highlighted) Neon else BorderColor, RoundedCornerShape(18.dp))
-                    .clickable { previewBody = body }.padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                    Box(Modifier.fillMaxWidth().height(95.dp).clip(RoundedCornerShape(12.dp)).background(Color(0xFF07131B))) {
-                        BodyStylePreview(body, state.settings.skin, state.settings.headStyle, Modifier.fillMaxSize())
-                    }
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text(tx(lang, "body_${body.key}"), color = PrimaryText,
-                            fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.weight(1f))
-                        Text(if (owned) (if (equipped) (if (lang == "ar") "مُجهّز" else "Equipped") else tx(lang, "owned"))
-                            else "${body.priceCoins} 🪙", color = if (owned) Neon else Gold,
-                            fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                    }
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(onClick = { previewBody = body }, modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(12.dp)) {
-                            Text(if (lang == "ar") "معاينة" else "Preview", color = Neon, fontSize = 12.sp)
-                        }
-                        Button(onClick = { if (owned) onEquipBody(body) else pendingBodyBuy = body },
-                            enabled = if (owned) !equipped else state.stats.coins >= body.priceCoins,
-                            modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Neon, contentColor = ButtonText)) {
-                            Text(if (owned) (if (equipped) (if (lang == "ar") "مُجهّز" else "Equipped") else tx(lang, "equip"))
-                                else tx(lang, "buy"), fontWeight = FontWeight.Bold)
-                        }
-                    }
-                    if (!owned && state.stats.coins < body.priceCoins) {
-                        Text(if (lang == "ar") "ناقصك ${body.priceCoins - state.stats.coins} عملة"
-                            else "${body.priceCoins - state.stats.coins} more coins needed", color = Muted, fontSize = 11.sp)
-                    }
-                }
-            }
-        }
-        } // snake customization tab
-        else if (tab == "themes") {
-            item {
-                Text(tx(lang, "theme_shop_hint"), color = Muted, fontSize = 12.sp, lineHeight = 18.sp)
-            }
-            items(GameTheme.entries.filterNot { it.isFree }) { theme ->
-                val p = paletteFor(theme)
-                val owned = theme.key in state.settings.ownedThemeKeys
-                val applied = state.settings.theme == theme
-                val focused = previewTheme == theme
-                Column(
-                    Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp))
-                        .background(if (focused) SelectedPanel else Panel)
-                        .border(if (focused) 1.5.dp else 1.dp, if (focused) p.accent else BorderColor, RoundedCornerShape(18.dp))
-                        .clickable { previewTheme = theme }
-                        .padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    ThemeMiniPreview(theme, state.settings.skin, Modifier.fillMaxWidth().height(86.dp))
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                            Text(themeTitle(theme, lang), color = PrimaryText, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                            Text(themeDescription(theme, lang), color = Muted, fontSize = 11.sp)
-                        }
-                        Text(if (owned) tx(lang, "owned") else "${theme.priceCoins} 🪙", color = if (owned) Neon else Gold,
-                            fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                    }
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(onClick = { previewTheme = theme }, modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(12.dp)) {
-                            Text(tx(lang, "theme_preview"), fontSize = 12.sp, color = Neon)
-                        }
-                        if (owned) {
-                            Button(onClick = { onApplyTheme(theme) }, enabled = !applied,
-                                modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Neon, contentColor = ButtonText)) {
-                                Text(if (applied) tx(lang, "theme_active") else tx(lang, "theme_apply"), fontSize = 12.sp)
-                            }
-                        } else {
-                            Button(onClick = { pendingThemeBuy = theme }, enabled = state.stats.coins >= theme.priceCoins,
-                                modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Neon, contentColor = ButtonText)) {
-                                Text(tx(lang, "buy"), fontSize = 12.sp)
-                            }
-                        }
-                    }
-                    if (!owned && state.stats.coins < theme.priceCoins) {
-                        Text(if (lang == "ar") "ناقصك ${theme.priceCoins - state.stats.coins} عملة" else
-                            "${theme.priceCoins - state.stats.coins} more coins needed", color = Muted, fontSize = 11.sp)
-                    }
-                }
-            }
-            item {
-                Text(tx(lang, "theme_free_hint"), color = Muted, fontSize = 12.sp,
-                    modifier = Modifier.padding(bottom = 12.dp))
-            }
-        } // themes tab
-        else if (tab == "coins") {
-            item {
-                Text(tx(lang, "coin_shop_title"), color = PrimaryText,
-                    fontWeight = FontWeight.Black, fontSize = 18.sp)
-                Text(tx(lang, "coin_shop_info"), color = Muted,
-                    fontSize = 12.sp, lineHeight = 18.sp)
-            }
-            if (coinPriceCatalog != null && coinPriceState == CoinPriceCatalog.State.UNAVAILABLE) {
+        Spacer(Modifier.height(10.dp))
+        LazyColumn(Modifier.fillMaxWidth().weight(1f),
+            verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (tab == "skins") {
                 item {
-                    OutlinedButton(onClick = { coinPriceCatalog.refresh() }) {
-                        Text(if (lang == "ar") "إعادة محاولة تحميل الأسعار" else "Retry loading prices")
+                    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                        ChoiceChip(tx(lang, "shop_colors"), snakeTab == "colors") { snakeTab = "colors" }
+                        ChoiceChip(tx(lang, "shop_heads"), snakeTab == "heads") { snakeTab = "heads" }
+                        ChoiceChip(tx(lang, "shop_bodies"), snakeTab == "body") { snakeTab = "body" }
                     }
                 }
-            }
-            items(COIN_PACKAGES, key = { it.productId }) { pack ->
-                Column(
-                    Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp))
-                        .background(Panel).border(1.dp, BorderColor, RoundedCornerShape(18.dp))
-                        .padding(14.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text("🪙", fontSize = 28.sp)
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text("${pack.coinAmount} ${if (lang == "ar") "عملة" else "coins"}",
-                                color = PrimaryText, fontSize = 19.sp, fontWeight = FontWeight.Black)
-                            Text(playPrices[pack.productId] ?: when (coinPriceState) {
-                                CoinPriceCatalog.State.LOADING -> if (lang == "ar") "جارٍ تحميل السعر…" else "Loading Google Play price…"
-                                CoinPriceCatalog.State.UNAVAILABLE -> if (lang == "ar") "السعر غير متاح" else "Price unavailable"
-                                else -> tx(lang, "coin_shop_price_pending")
-                            }, color = Muted, fontSize = 12.sp)
+                if (snakeTab == "colors") {
+                    item { PlayformSectionTitle(if (lang == "ar") "ألوان الثعبان" else "Snake Colors") }
+                    val normalSkins = listOf(
+                        SnakeSkin.GREEN, SnakeSkin.PURPLE, SnakeSkin.YELLOW,
+                        SnakeSkin.CYBER, SnakeSkin.ICE, SnakeSkin.FIRE
+                    )
+                    items(normalSkins.chunked(columns)) { group ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            group.forEach { skin ->
+                                val owned = skin.isFree || skin.key in state.settings.ownedSkinKeys
+                                StyleLabItemCard(tx(lang, skin.key), previewSkin == skin,
+                                    owned, state.settings.skin == skin, skin.priceCoins,
+                                    state.stats.coins, lang, Modifier.weight(1f),
+                                    preview = {
+                                        SkinPreview(skin, Modifier.fillMaxSize(),
+                                            state.settings.headStyle, state.settings.bodyType)
+                                    },
+                                    onPreview = { previewSkin = skin },
+                                    onAction = {
+                                        if (owned) onEquip(skin)
+                                        else { previewSkin = skin; pendingBuy = skin }
+                                    })
+                            }
+                            repeat(columns - group.size) { Spacer(Modifier.weight(1f)) }
                         }
                     }
-                    Button(
-                        onClick = { coinPriceCatalog?.buy(pack.productId) },
-                        enabled = coinPriceCatalog?.canBuy(pack.productId) == true,
-                        modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text(
-                            if (coinPriceCatalog?.canBuy(pack.productId) == true)
-                                if (lang == "ar") "الشراء عبر Google Play" else "Buy with Google Play"
-                            else tx(lang, "coin_shop_unavailable"),
-                            fontSize = 12.sp
-                        )
+                    item {
+                        PlayformSectionTitle(tx(lang, "arab_collection"),
+                            tx(lang, "arab_collection_desc"))
+                    }
+                    items(ARAB_COLLECTION.chunked(columns)) { group ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            group.forEach { skin ->
+                                val owned = skin.isFree || skin.key in state.settings.ownedSkinKeys
+                                StyleLabItemCard(tx(lang, skin.key), previewSkin == skin,
+                                    owned, state.settings.skin == skin, skin.priceCoins,
+                                    state.stats.coins, lang, Modifier.weight(1f),
+                                    preview = {
+                                        SkinPreview(skin, Modifier.fillMaxSize(),
+                                            state.settings.headStyle, state.settings.bodyType)
+                                    },
+                                    onPreview = { previewSkin = skin },
+                                    onAction = {
+                                        if (owned) onEquip(skin)
+                                        else { previewSkin = skin; pendingBuy = skin }
+                                    })
+                            }
+                            repeat(columns - group.size) { Spacer(Modifier.weight(1f)) }
+                        }
+                    }
+                } else if (snakeTab == "heads") {
+                    item { PlayformSectionTitle(tx(lang, "head_title"), tx(lang, "head_hint")) }
+                    items(SnakeHeadStyle.entries.toList().chunked(columns)) { group ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            group.forEach { head ->
+                                val owned = head.isFree || head.key in state.settings.ownedHeadKeys
+                                StyleLabItemCard(tx(lang, "head_${head.key}"), previewHead == head,
+                                    owned, state.settings.headStyle == head, head.priceCoins,
+                                    state.stats.coins, lang, Modifier.weight(1f),
+                                    preview = {
+                                        HeadStylePreview(head, state.settings.skin,
+                                            Modifier.fillMaxSize(), state.settings.bodyType)
+                                    },
+                                    onPreview = { previewHead = head },
+                                    onAction = {
+                                        if (owned) onEquipHead(head) else pendingHeadBuy = head
+                                    })
+                            }
+                            repeat(columns - group.size) { Spacer(Modifier.weight(1f)) }
+                        }
+                    }
+                } else {
+                    item { PlayformSectionTitle(tx(lang, "body_title"), tx(lang, "body_soon_hint")) }
+                    items(SnakeBodyType.entries.toList().chunked(columns)) { group ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            group.forEach { body ->
+                                val owned = body.isFree || body.key in state.settings.ownedBodyKeys
+                                StyleLabItemCard(tx(lang, "body_${body.key}"), previewBody == body,
+                                    owned, state.settings.bodyType == body, body.priceCoins,
+                                    state.stats.coins, lang, Modifier.weight(1f),
+                                    preview = {
+                                        // Real renderer, including distinct Crystal and Smooth geometry.
+                                        BodyStylePreview(body, state.settings.skin,
+                                            state.settings.headStyle, Modifier.fillMaxSize())
+                                    },
+                                    onPreview = { previewBody = body },
+                                    onAction = {
+                                        if (owned) onEquipBody(body) else pendingBodyBuy = body
+                                    })
+                            }
+                            repeat(columns - group.size) { Spacer(Modifier.weight(1f)) }
+                        }
                     }
                 }
+            } else if (tab == "themes") {
+                item { PlayformSectionTitle(tx(lang, "game_themes"), tx(lang, "theme_shop_hint")) }
+                items(GameTheme.entries.filterNot { it.isFree }.chunked(columns)) { group ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        group.forEach { theme ->
+                            val owned = theme.key in state.settings.ownedThemeKeys
+                            StyleLabItemCard(themeTitle(theme, lang), previewTheme == theme,
+                                owned, state.settings.theme == theme, theme.priceCoins,
+                                state.stats.coins, lang, Modifier.weight(1f),
+                                preview = {
+                                    ThemeMiniPreview(theme, state.settings.skin, Modifier.fillMaxSize())
+                                },
+                                onPreview = { previewTheme = theme },
+                                onAction = {
+                                    if (owned) onApplyTheme(theme)
+                                    else pendingThemeBuy = theme
+                                })
+                        }
+                        repeat(columns - group.size) { Spacer(Modifier.weight(1f)) }
+                    }
+                }
+                item { Text(tx(lang, "theme_free_hint"),
+                    color = Playform.TextSecondary, fontSize = 12.sp) }
+            } else if (tab == "coins") {
+                item { PlayformSectionTitle(tx(lang, "coin_shop_title"), tx(lang, "coin_shop_info")) }
+                if (coinPriceCatalog != null && coinPriceState == CoinPriceCatalog.State.UNAVAILABLE) {
+                    item {
+                        OutlinedButton(onClick = { coinPriceCatalog.refresh() }) {
+                            Text(if (lang == "ar") "إعادة تحميل الأسعار"
+                                else "Retry loading prices")
+                        }
+                    }
+                }
+                items(COIN_PACKAGES, key = { it.productId }) { pack ->
+                    PlayformCard {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("🪙", fontSize = 30.sp)
+                            Column(Modifier.weight(1f).padding(horizontal = 9.dp)) {
+                                Text("${pack.coinAmount} ${if (lang == "ar") "عملة" else "coins"}",
+                                    color = Playform.Ink, fontWeight = FontWeight.Black,
+                                    fontSize = 17.sp)
+                                Text(playPrices[pack.productId] ?: when (coinPriceState) {
+                                    CoinPriceCatalog.State.LOADING ->
+                                        if (lang == "ar") "جارٍ تحميل السعر" else "Loading price"
+                                    CoinPriceCatalog.State.UNAVAILABLE ->
+                                        if (lang == "ar") "السعر غير متاح" else "Price unavailable"
+                                    else -> tx(lang, "coin_shop_price_pending")
+                                }, color = Playform.TextSecondary, fontSize = 12.sp)
+                            }
+                        }
+                        Button(onClick = { coinPriceCatalog?.buy(pack.productId) },
+                            enabled = coinPriceCatalog?.canBuy(pack.productId) == true,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(13.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Playform.Coral, contentColor = Playform.Ink)) {
+                            Text(if (coinPriceCatalog?.canBuy(pack.productId) == true)
+                                if (lang == "ar") "الشراء عبر Google Play" else "Buy with Google Play"
+                                else tx(lang, "coin_shop_unavailable"), fontSize = 13.sp)
+                        }
+                    }
+                }
+                item {
+                    Text(coinPriceCatalog?.statusMessage ?: tx(lang, "coin_shop_no_payment"),
+                        color = Playform.TextSecondary, fontSize = 12.sp)
+                }
             }
-            item {
-                Text(
-                    coinPriceCatalog?.statusMessage ?: tx(lang, "coin_shop_no_payment"),
-                    color = Muted, fontSize = 11.sp, modifier = Modifier.padding(bottom = 12.dp)
-                )
-            }
-        } // coins tab
+            item { Spacer(Modifier.height(10.dp)) }
         }
     }
 
@@ -1443,7 +1501,7 @@ private fun ShopScreen(
             },
             confirmButton = {
                 TextButton(onClick = { onPurchaseTheme(theme); pendingThemeBuy = null }) {
-                    Text(if (lang == "ar") "تأكيد الشراء" else "Buy now", color = Neon, fontWeight = FontWeight.Bold)
+                    Text(if (lang == "ar") "تأكيد الشراء" else "Buy now", color = Playform.Ink, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = { TextButton(onClick = { pendingThemeBuy = null }) { Text(tx(lang, "cancel"), color = Muted) } },
@@ -1464,7 +1522,7 @@ private fun ShopScreen(
                 }
             },
             confirmButton = { TextButton(onClick = { onPurchaseBody(body); pendingBodyBuy = null }) {
-                Text(if (lang == "ar") "تأكيد الشراء" else "Buy now", color = Neon)
+                Text(if (lang == "ar") "تأكيد الشراء" else "Buy now", color = Playform.Ink)
             } },
             dismissButton = { TextButton(onClick = { pendingBodyBuy = null }) {
                 Text(tx(lang, "cancel"), color = Muted)
@@ -1487,7 +1545,7 @@ private fun ShopScreen(
                 }
             },
             confirmButton = { TextButton(onClick = { onPurchaseHead(head); pendingHeadBuy = null }) {
-                Text(if (lang == "ar") "تأكيد الشراء" else "Buy now", color = Neon)
+                Text(if (lang == "ar") "تأكيد الشراء" else "Buy now", color = Playform.Ink)
             } },
             dismissButton = { TextButton(onClick = { pendingHeadBuy = null }) {
                 Text(tx(lang, "cancel"), color = Muted)
@@ -1511,7 +1569,7 @@ private fun ShopScreen(
             },
             confirmButton = {
                 TextButton(onClick = { onPurchase(skin); pendingBuy = null }) {
-                    Text(if (lang == "ar") "تأكيد الشراء" else "Buy now", color = Neon, fontWeight = FontWeight.Bold)
+                    Text(if (lang == "ar") "تأكيد الشراء" else "Buy now", color = Playform.Ink, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = { TextButton(onClick = { pendingBuy = null }) { Text(if (lang == "ar") "إلغاء" else "Cancel", color = Muted) } },
@@ -1618,37 +1676,57 @@ private fun BodyStylePreview(body: SnakeBodyType, skin: SnakeSkin, headStyle: Sn
 @Composable
 private fun ModeSelectScreen(state: AppUiState, onBack: () -> Unit, onSelect: (GameMode) -> Unit, onStart: () -> Unit) {
     val lang = state.settings.language
-    Column(Modifier.fillMaxSize().background(Bg).padding(16.dp)) {
+    Column(Modifier.fillMaxSize().background(Playform.Cream)
+        .padding(horizontal = 16.dp, vertical = 12.dp)) {
         ScreenHeader(tx(lang, "choose_mode"), onBack)
-        Text(tx(lang, "choose_mode_sub"), color = Muted, fontSize = 14.sp, modifier = Modifier.padding(bottom = 16.dp))
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        PlayformPageIntro(
+            if (lang == "ar") "اختار أسلوب اللعب" else "Choose your mode",
+            if (lang == "ar") "كل وضع له تحدٍ مختلف. القرار ليك!" else "Three ways to play. Your choice."
+        )
+        Spacer(Modifier.height(16.dp))
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(12.dp)) {
             ModeCard(GameMode.CLASSIC, state.selectedMode == GameMode.CLASSIC, lang, onSelect)
             ModeCard(GameMode.TIME_ATTACK, state.selectedMode == GameMode.TIME_ATTACK, lang, onSelect)
             ModeCard(GameMode.ZEN, state.selectedMode == GameMode.ZEN, lang, onSelect)
         }
+        Spacer(Modifier.height(10.dp))
         PrimaryActionButton(state.selectedMode.startLabel(lang), Icons.Rounded.PlayArrow, onStart)
     }
 }
 
 @Composable
 private fun ModeCard(mode: GameMode, selected: Boolean, language: String, onSelect: (GameMode) -> Unit) {
-    val accent = when (mode) { GameMode.CLASSIC -> Neon; GameMode.TIME_ATTACK -> Gold; GameMode.ZEN -> Blue }
-    val icon = when (mode) { GameMode.CLASSIC -> Icons.Rounded.Gamepad; GameMode.TIME_ATTACK -> Icons.Rounded.Timer; GameMode.ZEN -> Icons.Rounded.Spa }
-    Card(
-        modifier = Modifier.fillMaxWidth().clickable { onSelect(mode) }.border(if (selected) 1.5.dp else 1.dp, if (selected) accent else BorderColor, RoundedCornerShape(18.dp)),
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = if (selected) SelectedPanel else Panel)
-    ) {
-        Row(Modifier.padding(15.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(13.dp)) {
-            Box(Modifier.size(52.dp).clip(RoundedCornerShape(14.dp)).background(accent.copy(alpha = 0.13f)), contentAlignment = Alignment.Center) {
-                androidx.compose.material3.Icon(icon, null, tint = accent, modifier = Modifier.size(29.dp))
-            }
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(mode.title(language), color = accent, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                Text(mode.description(language), color = SecondaryText, fontSize = 12.sp, lineHeight = 17.sp)
-            }
-            if (selected) androidx.compose.material3.Icon(Icons.Rounded.CheckCircle, null, tint = accent, modifier = Modifier.size(24.dp))
+    val color = when (mode) {
+        GameMode.CLASSIC -> Playform.PaleCoral
+        GameMode.TIME_ATTACK -> Playform.Gold
+        GameMode.ZEN -> Playform.PaleMint
+    }
+    val icon = when (mode) {
+        GameMode.CLASSIC -> Icons.Rounded.Gamepad
+        GameMode.TIME_ATTACK -> Icons.Rounded.Timer
+        GameMode.ZEN -> Icons.Rounded.Spa
+    }
+    Row(Modifier.fillMaxWidth().heightIn(min = 96.dp)
+        .clip(RoundedCornerShape(22.dp)).background(color)
+        .border(if (selected) 2.dp else 1.dp,
+            if (selected) Playform.Ink else Playform.Border, RoundedCornerShape(22.dp))
+        .clickable { onSelect(mode) }.padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Box(Modifier.size(49.dp).clip(RoundedCornerShape(16.dp))
+            .background(Playform.White.copy(alpha = .8f)), contentAlignment = Alignment.Center) {
+            androidx.compose.material3.Icon(icon, contentDescription = null,
+                tint = Playform.Ink, modifier = Modifier.size(29.dp))
         }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(mode.title(language), color = Playform.Ink, fontWeight = FontWeight.Black, fontSize = 17.sp)
+            Text(mode.description(language), color = Playform.TextSecondary,
+                fontSize = 12.sp, lineHeight = 17.sp)
+        }
+        if (selected) androidx.compose.material3.Icon(Icons.Rounded.CheckCircle,
+            contentDescription = if (language == "ar") "محدد" else "Selected",
+            tint = Playform.Ink, modifier = Modifier.size(23.dp))
     }
 }
 
@@ -1727,10 +1805,13 @@ private fun SettingsScreen(
     // Intercept system Back only while a settings subpage is open. From the root settings page,
     // the existing app-level BackHandler continues to return to the main menu.
     BackHandler(enabled = selectedCategory != null) {
-        selectedCategory = null
+        selectedCategory = if (selectedCategory == "account_stats") "account" else null
     }
 
-    if (selectedCategory == null) {
+    if (selectedCategory == "account_stats") {
+        StatisticsScreen(state, onBack = { selectedCategory = "account" },
+            onClaimReward = { false }, achievementsOnly = false)
+    } else if (selectedCategory == null) {
         LazyColumn(
             Modifier.fillMaxSize().background(Bg).padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -1772,6 +1853,17 @@ private fun SettingsScreen(
                     onClick = { selectedCategory = "account" }
                 )
             }
+            item {
+                PlayformDarkCard {
+                    PlayformTag("YOUR SPACE")
+                    Text(if (lang == "ar") "ظبّط اللعبة على مزاجك" else "Make the game yours",
+                        color = Playform.White, fontWeight = FontWeight.Black, fontSize = 18.sp)
+                    Text(if (lang == "ar")
+                        "اختياراتك الحالية تفضل محفوظة، والثيمات المملوكة تفضل متاحة."
+                        else "Your preferences and unlocked looks stay available.",
+                        color = Playform.LightOnDark, fontSize = 13.sp, lineHeight = 19.sp)
+                }
+            }
             item { Spacer(Modifier.height(8.dp)) }
         }
     } else {
@@ -1782,6 +1874,16 @@ private fun SettingsScreen(
             item { ScreenHeader(tx(lang, selectedCategory!!), onBack = { selectedCategory = null }) }
             when (selectedCategory) {
                 "account" -> {
+                    item {
+                        SettingsCategoryCard(
+                            title = tx(lang, "statistics"),
+                            description = if (lang == "ar") "نتائجك ومبارياتك ووقت اللعب"
+                                else "Scores, games and total playtime",
+                            icon = Icons.Rounded.BarChart,
+                            accent = Playform.Lavender,
+                            onClick = { selectedCategory = "account_stats" }
+                        )
+                    }
                     item {
                         SettingsPanel {
                             SettingHeading(tx(lang, "player_name"), Icons.Rounded.Person)
@@ -2158,8 +2260,8 @@ private fun ThemeOptionCard(
     Column(
         Modifier.fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
-            .background(if (selected) p.selectedPanel else p.panel)
-            .border(1.dp, if (selected) p.accent else p.border, RoundedCornerShape(14.dp))
+            .background(if (selected) Playform.PaleLavender else Playform.White)
+            .border(1.dp, if (selected) Playform.Ink else Playform.Border, RoundedCornerShape(14.dp))
             .clickable(onClick = onClick)
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -2173,13 +2275,13 @@ private fun ThemeOptionCard(
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(tx(language, titleKey), color = p.primaryText, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                Text(tx(language, descriptionKey), color = p.secondaryText, fontSize = 11.sp, lineHeight = 15.sp)
+                Text(tx(language, titleKey), color = Playform.Ink, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                Text(tx(language, descriptionKey), color = Playform.TextSecondary, fontSize = 12.sp, lineHeight = 15.sp)
             }
             if (selected) {
                 androidx.compose.material3.Icon(Icons.Rounded.CheckCircle, contentDescription = tx(language, "theme_active"), tint = p.accent, modifier = Modifier.size(22.dp))
             } else {
-                Text(tx(language, "theme_apply"), color = p.accent, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                Text(tx(language, "theme_apply"), color = Playform.Ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
             }
         }
     }
@@ -2220,32 +2322,51 @@ private fun SettingsCategoryCard(
 }
 
 @Composable
-private fun StatisticsScreen(state: AppUiState, onBack: () -> Unit, onClaimReward: (String) -> Boolean) {
+private fun StatisticsScreen(
+    state: AppUiState,
+    onBack: () -> Unit,
+    onClaimReward: (String) -> Boolean,
+    achievementsOnly: Boolean = state.statisticsOpenAchievements
+) {
     val lang = state.settings.language
-    var selectedTab by remember(state.statisticsOpenAchievements) {
-        mutableStateOf(if (state.statisticsOpenAchievements) 1 else 0)
-    }
+    val ar = lang == "ar"
     val stats = state.stats
-    LazyColumn(Modifier.fillMaxSize().background(Bg).padding(horizontal = 16.dp, vertical = 12.dp)) {
-        item { ScreenHeader(tx(lang, "stats_achievements"), onBack) }
+    var filter by remember { mutableStateOf("all") }
+    val unlockedCount = ACHIEVEMENTS.count {
+        it.id in stats.unlockedAchievements || it.progress(stats) >= it.target
+    }
+    val availableCoins = ACHIEVEMENTS.filter {
+        (it.id in stats.unlockedAchievements || it.progress(stats) >= it.target) &&
+            it.id !in stats.claimedAchievementRewards
+    }.sumOf { it.rewardCoins }
+    LazyColumn(Modifier.fillMaxSize().background(Playform.Cream)
+        .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(11.dp)) {
         item {
-            Row(Modifier.fillMaxWidth().background(Panel, RoundedCornerShape(13.dp)).padding(4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                ChoiceChip(tx(lang, "statistics"), selectedTab == 0, Modifier.weight(1f)) { selectedTab = 0 }
-                ChoiceChip(tx(lang, "achievements"), selectedTab == 1, Modifier.weight(1f)) { selectedTab = 1 }
-            }
-            Spacer(Modifier.height(14.dp))
+            ScreenHeader(tx(lang, if (achievementsOnly) "achievements" else "statistics"), onBack)
         }
-        if (selectedTab == 0) {
+        if (!achievementsOnly) {
             item {
-                // LTR outer row fixes the physical placement in both languages:
-                // Time Attack left, Classic best score right.
-                androidx.compose.runtime.CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        StatTile(tx(lang, "best_time"), stats.bestTimeScore.toString(), Modifier.weight(1f))
-                        StatTile(tx(lang, "best_score"), stats.bestScore.toString(), Modifier.weight(1f))
-                    }
+                PlayformDarkCard {
+                    PlayformTag("YOUR NUMBERS")
+                    Text(if (ar) "رحلتك بالأرقام" else "Your Journey in Numbers",
+                        color = Playform.White, fontSize = 23.sp,
+                        fontWeight = FontWeight.Black)
+                    Text(if (ar) "إحصائياتك المحفوظة عبر الجولات"
+                        else "Your saved game progress",
+                        color = Playform.LightOnDark, fontSize = 13.sp)
                 }
-                Spacer(Modifier.height(12.dp))
+            }
+            item {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.fillMaxWidth()) {
+                    PlayformCounterTile(tx(lang, "best_score"),
+                        stats.bestScore.toString(), Modifier.weight(1f), Playform.Gold)
+                    PlayformCounterTile(tx(lang, "best_time"),
+                        stats.bestTimeScore.toString(), Modifier.weight(1f), Playform.Lavender)
+                }
+            }
+            item {
                 val values = listOf(
                     tx(lang, "games") to stats.games.toString(),
                     tx(lang, "food_eaten") to stats.food.toString(),
@@ -2254,117 +2375,125 @@ private fun StatisticsScreen(state: AppUiState, onBack: () -> Unit, onClaimRewar
                     tx(lang, "scissors") to stats.scissors.toString(),
                     tx(lang, "longest_snake") to stats.maxLength.toString()
                 )
-                values.chunked(2).forEach { rowItems ->
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        rowItems.forEach { (label, value) -> StatTile(label, value, Modifier.weight(1f)) }
-                        if (rowItems.size == 1) Spacer(Modifier.weight(1f))
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    values.chunked(2).forEach { pair ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            pair.forEach { (label, value) ->
+                                PlayformCounterTile(label, value, Modifier.weight(1f))
+                            }
+                        }
                     }
-                    Spacer(Modifier.height(10.dp))
                 }
             }
         } else {
             item {
-                val unlockedCount = ACHIEVEMENTS.count { it.id in stats.unlockedAchievements || it.progress(stats) >= it.target }
-                val claimedCount = ACHIEVEMENTS.count { it.id in stats.claimedAchievementRewards }
-                val claimedCoins = ACHIEVEMENTS.sumOf { stats.claimedAchievementRewards[it.id] ?: 0 }
-                val availableCoins = ACHIEVEMENTS.filter { (it.id in stats.unlockedAchievements || it.progress(stats) >= it.target) && it.id !in stats.claimedAchievementRewards }
-                    .sumOf { it.rewardCoins }
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = SelectedPanel),
-                    shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                        Text("$unlockedCount / ${ACHIEVEMENTS.size} ${tx(lang, "achievements")}", color = Neon, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                        Text("${tx(lang, "achievement_reward_total")}: ${ACHIEVEMENTS.sumOf { it.rewardCoins }} 🪙", color = PrimaryText, fontSize = 12.sp)
-                        Text("${tx(lang, "achievement_reward_earned")}: $claimedCoins 🪙 ($claimedCount / ${ACHIEVEMENTS.size})", color = SecondaryText, fontSize = 12.sp)
-                        Text("${tx(lang, "achievement_reward_available")}: $availableCoins 🪙", color = if (availableCoins > 0) Gold else Muted, fontSize = 12.sp)
+                PlayformDarkCard {
+                    PlayformTag("ACHIEVEMENT GALLERY")
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("$unlockedCount / ${ACHIEVEMENTS.size}",
+                                color = Playform.White, fontWeight = FontWeight.Black,
+                                fontSize = 32.sp)
+                            Text(if (ar) "إنجازات مفتوحة" else "Achievements unlocked",
+                                color = Playform.LightOnDark, fontSize = 13.sp)
+                        }
+                        Text("🏆", fontSize = 50.sp)
+                    }
+                    PlayformProgressBar(unlockedCount.toFloat() / ACHIEVEMENTS.size.toFloat(),
+                        color = Playform.Gold)
+                    Text(if (ar) "$availableCoins عملة جاهزة للاستلام"
+                        else "$availableCoins coins ready to claim",
+                        color = Playform.LightOnDark, fontSize = 12.sp)
+                    Text(if (ar) "إجمالي المكافآت: 1,225 عملة"
+                        else "Total achievement rewards: 1,225 coins",
+                        color = Playform.LightOnDark, fontSize = 12.sp)
+                }
+            }
+            item {
+                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    listOf(
+                        "all" to (if (ar) "الكل" else "All"),
+                        "ready" to (if (ar) "جاهزة" else "Ready"),
+                        "progress" to (if (ar) "قيد التقدم" else "In progress"),
+                        "claimed" to (if (ar) "مستلمة" else "Claimed")
+                    ).forEach { (key, label) ->
+                        ChoiceChip(label, filter == key) { filter = key }
                     }
                 }
-                Spacer(Modifier.height(12.dp))
             }
-            items(ACHIEVEMENTS, key = { it.id }) { achievement ->
-                val unlocked = achievement.id in stats.unlockedAchievements || achievement.progress(stats) >= achievement.target
+            val visible = ACHIEVEMENTS.filter { achievement ->
+                val unlocked = achievement.id in stats.unlockedAchievements ||
+                    achievement.progress(stats) >= achievement.target
+                val claimed = achievement.id in stats.claimedAchievementRewards
+                when (filter) {
+                    "ready" -> unlocked && !claimed
+                    "progress" -> !unlocked
+                    "claimed" -> claimed
+                    else -> true
+                }
+            }
+            items(visible, key = { it.id }) { achievement ->
+                val unlocked = achievement.id in stats.unlockedAchievements ||
+                    achievement.progress(stats) >= achievement.target
                 val claimed = achievement.id in stats.claimedAchievementRewards
                 val progress = achievement.progress(stats).coerceAtLeast(0L)
-                val shownProgress = if (unlocked) maxOf(progress, achievement.target) else progress
-                val ratio = if (achievement.target <= 0) 1f else (shownProgress.toFloat() / achievement.target.toFloat()).coerceIn(0f, 1f)
-                val progressText = if (achievement.id == "dedicated" || achievement.id == "play60min") {
-                    "${formatPlayTime(shownProgress.coerceAtMost(achievement.target), lang)} / ${formatPlayTime(achievement.target, lang)}"
-                } else "${shownProgress.coerceAtMost(achievement.target)} / ${achievement.target}"
-
-                // Compact achievement row: keep manual claiming visible without a full-width button.
-                Card(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
-                    shape = RoundedCornerShape(11.dp),
-                    colors = CardDefaults.cardColors(containerColor = if (unlocked) SelectedPanel else Panel)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 72.dp)
-                            .padding(horizontal = 8.dp, vertical = 7.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier.size(38.dp).clip(RoundedCornerShape(9.dp))
-                                .background(if (unlocked) Gold.copy(alpha = 0.18f) else Bg),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(if (unlocked) achievement.icon else "🔒", fontSize = 19.sp)
+                val shown = if (unlocked) maxOf(progress, achievement.target) else progress
+                val ratio = if (achievement.target <= 0) 1f
+                    else (shown.toFloat() / achievement.target.toFloat()).coerceIn(0f, 1f)
+                val progressText = if (achievement.id == "dedicated" ||
+                    achievement.id == "play60min") {
+                    "${formatPlayTime(shown.coerceAtMost(achievement.target), lang)} / ${formatPlayTime(achievement.target, lang)}"
+                } else "${shown.coerceAtMost(achievement.target)} / ${achievement.target}"
+                PlayformCard(background = if (unlocked) Color(0xFFFFFDF6) else Playform.White) {
+                    Row(verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Box(Modifier.size(49.dp).clip(RoundedCornerShape(15.dp))
+                            .background(if (unlocked) Playform.Gold else Playform.PaleLavender),
+                            contentAlignment = Alignment.Center) {
+                            Text(if (unlocked) achievement.icon else "🔒", fontSize = 23.sp)
                         }
-                        Column(
-                            modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(3.dp)
-                        ) {
-                            Text(
-                                if (lang == "ar") achievement.arName else achievement.enName,
-                                color = if (unlocked) Gold else PrimaryText,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Text(
-                                if (lang == "ar") achievement.arDescription else achievement.enDescription,
-                                color = Muted,
-                                fontSize = 10.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                                LinearProgressIndicator(
-                                    progress = { ratio },
-                                    modifier = Modifier.weight(1f).height(4.dp).clip(CircleShape),
-                                    color = if (unlocked) Gold else Neon,
-                                    trackColor = BorderColor
-                                )
-                                Text(progressText, color = Muted, fontSize = 9.sp, maxLines = 1)
-                            }
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                            Text(if (ar) achievement.arName else achievement.enName,
+                                color = Playform.Ink, fontSize = 14.sp, fontWeight = FontWeight.Black)
+                            Text(if (ar) achievement.arDescription else achievement.enDescription,
+                                color = Playform.TextSecondary, fontSize = 12.sp,
+                                lineHeight = 17.sp)
+                            PlayformProgressBar(ratio,
+                                color = if (unlocked) Playform.GoldText else Playform.Lavender)
+                            Text(progressText, color = Playform.TextSecondary, fontSize = 12.sp)
                         }
-                        Column(
-                            modifier = Modifier.width(76.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(3.dp)
-                        ) {
-                            Text("🪙 ${achievement.rewardCoins}", color = Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Column(horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text("🪙 ${achievement.rewardCoins}", color = Playform.GoldText,
+                                fontWeight = FontWeight.Black, fontSize = 12.sp)
                             when {
-                                claimed -> Text(tx(lang, "claimed_short"), color = Neon, fontSize = 10.sp, maxLines = 1)
+                                claimed -> PlayformStatusPill(tx(lang, "claimed_short"),
+                                    color = Color(0xFF286C5B), background = Playform.PaleMint)
                                 unlocked -> Button(
                                     onClick = { onClaimReward(achievement.id) },
-                                    modifier = Modifier.fillMaxWidth().height(30.dp),
-                                    shape = RoundedCornerShape(8.dp),
-                                    contentPadding = PaddingValues(horizontal = 3.dp, vertical = 0.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = Neon, contentColor = ButtonText)
-                                ) {
-                                    Text(tx(lang, "claim_short"), fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-                                }
-                                else -> Text(tx(lang, "reward_pending"), color = Muted, fontSize = 10.sp, maxLines = 1)
+                                    modifier = Modifier.heightIn(min = 44.dp),
+                                    contentPadding = PaddingValues(horizontal = 11.dp),
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Playform.Coral, contentColor = Playform.Ink)
+                                ) { Text(tx(lang, "claim_short"), fontSize = 12.sp) }
+                                else -> Text(tx(lang, "reward_pending"),
+                                    color = Playform.TextSecondary, fontSize = 11.sp)
                             }
                         }
                     }
+                }
+            }
+            if (visible.isEmpty()) item {
+                PlayformCard {
+                    Text(if (ar) "مافيش إنجازات في التصنيف ده حاليًا"
+                        else "No achievements in this category yet",
+                        color = Playform.TextSecondary, fontSize = 14.sp)
                 }
             }
         }
-        item { Spacer(Modifier.height(12.dp)) }
+        item { Spacer(Modifier.height(8.dp)) }
     }
 }
 
@@ -2388,7 +2517,7 @@ private fun GameScreen(state: AppUiState, viewModel: GameViewModel, rewardedAds:
                     }
                     Column(Modifier.weight(0.66f).fillMaxHeight()) {
                         androidx.compose.runtime.CompositionLocalProvider(LocalLayoutDirection provides layoutDirection) {
-                            GameScoreBar(state, engine, Modifier.fillMaxWidth().height(48.dp), onPause = viewModel::requestPause)
+                            GameScoreBar(state, engine, Modifier.fillMaxWidth().height(60.dp), onPause = viewModel::requestPause)
                         }
                         BoxWithConstraints(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                             val side = min(maxWidth.value, maxHeight.value).dp
@@ -2406,7 +2535,7 @@ private fun GameScreen(state: AppUiState, viewModel: GameViewModel, rewardedAds:
             // Any unused vertical space belongs to the touch region, not a blank board container.
             val horizontalPadding = 8.dp
             val verticalPadding = 6.dp
-            val scoreHeight = 48.dp
+            val scoreHeight = 60.dp
             val minimumControlHeight = if (dPadSelected) 178.dp else 132.dp
             val boardSide = min(
                 (maxWidth - horizontalPadding * 2).value,
@@ -2431,7 +2560,7 @@ private fun GameScreen(state: AppUiState, viewModel: GameViewModel, rewardedAds:
                     .border(1.dp, Neon.copy(alpha = .6f), RoundedCornerShape(14.dp))
                     .padding(horizontal = 14.dp, vertical = 6.dp),
                     horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("$graceSeconds", color = Neon, fontSize = 23.sp, fontWeight = FontWeight.Black)
+                    Text("$graceSeconds", color = Playform.Ink, fontSize = 23.sp, fontWeight = FontWeight.Black)
                     Text(if (lang == "ar") "حرّك الثعبان للبدء" else "Steer to continue",
                         color = SecondaryText, fontSize = 10.sp)
                 }
@@ -2439,7 +2568,7 @@ private fun GameScreen(state: AppUiState, viewModel: GameViewModel, rewardedAds:
         }
         if (engine.shieldRemainingMs > 0L && state.screen == AppScreen.GAME) {
             Box(Modifier.fillMaxSize().padding(top = 54.dp), contentAlignment = Alignment.TopCenter) {
-                Text("🛡 ${(engine.shieldRemainingMs + 999L) / 1000L}s", color = Neon,
+                Text("🛡 ${(engine.shieldRemainingMs + 999L) / 1000L}s", color = Playform.Ink,
                     fontWeight = FontWeight.Bold, fontSize = 16.sp,
                     modifier = Modifier.clip(RoundedCornerShape(12.dp)).background(Panel).padding(horizontal = 12.dp, vertical = 5.dp))
             }
@@ -2525,7 +2654,7 @@ private fun DPadButton(direction: Direction, size: Dp, enabled: Boolean, onDirec
         contentAlignment = Alignment.Center
     ) {
         androidx.compose.material3.Icon(icon, contentDescription = direction.name,
-            tint = if (pressed && enabled) palette.bg else palette.joystickKnob,
+            tint = if (pressed && enabled) Playform.Ink else palette.joystickKnob,
             modifier = Modifier.size(size * 0.68f))
     }
 }
@@ -2539,7 +2668,7 @@ private fun GameScoreBar(state: AppUiState, engine: com.ahmedzayed.zasnake.game.
         ScoreItem(if (engine.mode == GameMode.TIME_ATTACK) tx(lang, "time") else tx(lang, "level"),
             if (engine.mode == GameMode.TIME_ATTACK) ((engine.timeRemainingMs + 999) / 1000).toString() else engine.level.toString(), Modifier.weight(1f))
         IconButtonFrame(onClick = onPause, modifier = Modifier.size(42.dp)) {
-            androidx.compose.material3.Icon(Icons.Rounded.Pause, null, tint = Neon)
+            androidx.compose.material3.Icon(Icons.Rounded.Pause, tx(lang, "pause_title"), tint = Playform.Ink)
         }
     }
 }
@@ -2554,15 +2683,15 @@ private fun ScoreItem(label: String, value: String, modifier: Modifier, highligh
         }
     }
     Column(
-        modifier.fillMaxHeight().clip(RoundedCornerShape(8.dp)).background(Panel)
-            .border(1.dp, BorderColor, RoundedCornerShape(8.dp))
-            .padding(horizontal = 3.dp, vertical = 2.dp),
+        modifier.fillMaxHeight().clip(RoundedCornerShape(14.dp)).background(Playform.White)
+            .border(1.dp, Playform.Border, RoundedCornerShape(14.dp))
+            .padding(horizontal = 4.dp, vertical = 3.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text(label, color = LocalZaPalette.current.scoreLabel, fontSize = 9.sp,
-            lineHeight = 11.sp, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
-        Text(value, color = Neon, fontSize = 16.sp, lineHeight = 18.sp,
+        Text(label, color = LocalZaPalette.current.scoreLabel, fontSize = 11.sp,
+            lineHeight = 14.sp, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
+        Text(value, color = Playform.Ink, fontSize = 18.sp, lineHeight = 21.sp,
             modifier = Modifier.graphicsLayer {
                 scaleX = 1f + .10f * pulse.value
                 scaleY = 1f + .10f * pulse.value
@@ -2573,9 +2702,9 @@ private fun ScoreItem(label: String, value: String, modifier: Modifier, highligh
 
 @Composable
 private fun GameBoard(engine: com.ahmedzayed.zasnake.game.SnakeEngine, frameVersion: Long, skin: SnakeSkin, headStyle: SnakeHeadStyle, bodyType: SnakeBodyType, cues: List<VisualCue>, modifier: Modifier) {
-    val palette = LocalZaPalette.current
+    val palette = LocalBoardPalette.current
     val motionEnabled = LocalVisualMotionEnabled.current
-    Canvas(modifier = modifier.clip(RoundedCornerShape(4.dp)).border(1.dp, palette.boardBorder, RoundedCornerShape(4.dp))) {
+    Canvas(modifier = modifier.clip(RoundedCornerShape(12.dp)).border(2.dp, palette.boardBorder, RoundedCornerShape(12.dp))) {
         // Capturing the frame marker invalidates the draw closure while the ViewModel ticks.
         if (frameVersion == Long.MIN_VALUE) return@Canvas
         drawRect(palette.boardBackground)
@@ -2757,7 +2886,7 @@ private fun JoystickArea(
         } else {
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
                 androidx.compose.material3.Icon(Icons.Rounded.TouchApp, null, tint = palette.joystickHint, modifier = Modifier.size(25.dp))
-                Text(tx(language, "tap_to_steer"), color = palette.muted, fontSize = 10.sp, modifier = Modifier.padding(top = 5.dp))
+                Text(tx(language, "tap_to_steer"), color = palette.muted, fontSize = 12.sp, modifier = Modifier.padding(top = 5.dp))
             }
         }
     }
@@ -2787,8 +2916,8 @@ private fun RewardPopOverlay(pop: RewardPop, balance: Long, language: String, on
             .background(SelectedPanel).border(1.dp, Gold, RoundedCornerShape(25.dp))
             .padding(horizontal = 18.dp, vertical = 9.dp)) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("+${pop.coins} 🪙", color = Gold, fontWeight = FontWeight.Black, fontSize = 17.sp)
-                Text("${tx(language, "coin_balance")}: $balance", color = PrimaryText, fontSize = 10.sp)
+                Text("+${pop.coins} 🪙", color = Playform.GoldText, fontWeight = FontWeight.Black, fontSize = 17.sp)
+                Text("${tx(language, "coin_balance")}: $balance", color = Playform.Ink, fontSize = 12.sp)
             }
         }
     }
@@ -2797,16 +2926,41 @@ private fun RewardPopOverlay(pop: RewardPop, balance: Long, language: String, on
 @Composable
 private fun PauseCard(state: AppUiState, viewModel: GameViewModel) {
     val lang = state.settings.language
-    Column(Modifier.fillMaxWidth(0.86f).widthIn(max = 360.dp).clip(RoundedCornerShape(22.dp)).background(Panel).border(1.dp, BorderColor, RoundedCornerShape(22.dp)).padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(11.dp)) {
-        androidx.compose.material3.Icon(Icons.Rounded.Pause, null, tint = Neon, modifier = Modifier.size(42.dp))
-        Text(tx(lang, "pause_title"), color = Neon, fontSize = 23.sp, fontWeight = FontWeight.Bold)
-        val detailLabel = if (viewModel.engine.mode == GameMode.TIME_ATTACK) tx(lang, "time") else tx(lang, "level")
-        val detailValue = if (viewModel.engine.mode == GameMode.TIME_ATTACK) "${(viewModel.engine.timeRemainingMs + 999L) / 1000L}s" else viewModel.engine.level.toString()
-        Text("${tx(lang, "score")}: ${viewModel.engine.score}  •  $detailLabel: $detailValue", color = Muted, fontSize = 13.sp)
+    val ar = lang == "ar"
+    val engine = viewModel.engine
+    val detailLabel = if (engine.mode == GameMode.TIME_ATTACK) tx(lang, "time")
+        else tx(lang, "level")
+    val detailValue = if (engine.mode == GameMode.TIME_ATTACK)
+        "${(engine.timeRemainingMs + 999L) / 1000L}s"
+        else engine.level.toString()
+    Column(
+        Modifier.fillMaxWidth(0.90f).widthIn(max = 360.dp)
+            .clip(RoundedCornerShape(25.dp)).background(Playform.Cream)
+            .border(1.dp, Playform.Border, RoundedCornerShape(25.dp))
+            .padding(19.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(11.dp)
+    ) {
+        Box(Modifier.size(58.dp).clip(RoundedCornerShape(19.dp))
+            .background(Playform.PaleLavender), contentAlignment = Alignment.Center) {
+            androidx.compose.material3.Icon(Icons.Rounded.Pause, tx(lang, "pause_title"),
+                tint = Playform.Ink, modifier = Modifier.size(36.dp))
+        }
+        PlayformTag("TAKE A BREAK", color = Playform.CoralText)
+        Text(tx(lang, "pause_title"), color = Playform.Ink, fontSize = 23.sp,
+            lineHeight = 30.sp, fontWeight = FontWeight.Black, textAlign = TextAlign.Center)
+        Text(if (ar) "تقدر تكمل جولتك من نفس المكان" else "Pick up right where you left off",
+            color = Playform.TextSecondary, fontSize = 13.sp, textAlign = TextAlign.Center)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            PlayformCounterTile(tx(lang, "score"), engine.score.toString(),
+                Modifier.weight(1f))
+            PlayformCounterTile(detailLabel, detailValue, Modifier.weight(1f))
+        }
         PrimaryActionButton(tx(lang, "continue"), Icons.Rounded.PlayArrow, viewModel::resumeFromPause)
         OutlinedActionButton(tx(lang, "restart"), Icons.Rounded.Replay, viewModel::requestRestart)
         OutlinedActionButton(tx(lang, "main_menu"), Icons.Rounded.Home, viewModel::goHomeKeepingRound)
-        Text(tx(lang, "paused_save"), color = Muted, fontSize = 11.sp)
+        Text(tx(lang, "paused_save"), color = Playform.TextSecondary, fontSize = 12.sp,
+            textAlign = TextAlign.Center)
     }
 }
 
@@ -2825,23 +2979,29 @@ private fun GameOverCard(state: AppUiState, viewModel: GameViewModel, rewardedAd
     BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
     Column(Modifier.fillMaxWidth(0.90f).widthIn(max = 370.dp)
         .heightIn(max = (maxHeight - 12.dp).coerceAtLeast(1.dp))
-        .clip(RoundedCornerShape(22.dp)).background(Panel)
-        .border(1.dp, BorderColor, RoundedCornerShape(22.dp))
+        .clip(RoundedCornerShape(25.dp)).background(Playform.Cream)
+        .border(1.dp, Playform.Border, RoundedCornerShape(25.dp))
         .verticalScroll(rememberScrollState()).padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        androidx.compose.material3.Icon(Icons.Rounded.EmojiEvents, null, tint = Gold, modifier = Modifier.size(44.dp))
-        Text(title, color = PrimaryText, fontSize = 23.sp, fontWeight = FontWeight.Bold)
+        Box(Modifier.size(58.dp).clip(RoundedCornerShape(18.dp))
+            .background(Playform.Gold), contentAlignment = Alignment.Center) {
+            androidx.compose.material3.Icon(Icons.Rounded.EmojiEvents, null,
+                tint = Playform.Ink, modifier = Modifier.size(34.dp))
+        }
+        PlayformTag(if (engine.mode == GameMode.TIME_ATTACK) "TIME ATTACK" else "RUN COMPLETE",
+            color = Playform.CoralText)
+        Text(title, color = Playform.Ink, fontSize = 23.sp, fontWeight = FontWeight.Bold)
         if (state.newRecordThisRound) {
-            Text("✦ ${tx(lang, "new_record_visual")} ✦", color = Gold,
+            Text("✦ ${tx(lang, "new_record_visual")} ✦", color = Playform.GoldText,
                 fontSize = 14.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
         }
         Text(tx(lang, "your_score"), color = Muted, fontSize = 13.sp)
-        Text(scoreCount.value.roundToInt().toString(), color = Neon,
+        Text(scoreCount.value.roundToInt().toString(), color = Playform.CoralText,
             fontSize = 42.sp, fontWeight = FontWeight.Black)
         Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(LocalZaPalette.current.statsTile).padding(13.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Text(tx(lang, "best_score"), color = SecondaryText, fontSize = 12.sp)
-            Text(state.stats.bestScore.toString(), color = Gold, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            Text((if (engine.mode == GameMode.TIME_ATTACK) state.stats.bestTimeScore else state.stats.bestScore).toString(), color = Gold, fontWeight = FontWeight.Bold, fontSize = 18.sp)
         }
         if (engine.mode == GameMode.CLASSIC) {
             val earned = if (engine.pendingCollision) engine.score else state.stats.coinRewards[engine.sessionId] ?: 0
@@ -2934,7 +3094,7 @@ private fun SettingsPanel(content: @Composable ColumnScope.() -> Unit) {
 @Composable
 private fun SettingHeading(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        androidx.compose.material3.Icon(icon, null, tint = Neon, modifier = Modifier.size(19.dp))
+        androidx.compose.material3.Icon(icon, null, tint = Playform.CoralText, modifier = Modifier.size(19.dp))
         Text(label, color = PrimaryText, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
     }
 }
@@ -2981,15 +3141,15 @@ private fun SkinChip(skin: SnakeSkin, selected: Boolean, language: String, onCli
     }
     Column(Modifier.clickable { onClick() }.padding(2.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(5.dp)) {
         Box(Modifier.size(31.dp).clip(CircleShape).background(color).border(if (selected) 3.dp else 1.dp, if (selected) Color.White else Color(0xFF53665A), CircleShape))
-        Text(tx(language, skin.key), color = if (selected) Neon else Muted, fontSize = 9.sp, textAlign = TextAlign.Center)
+        Text(tx(language, skin.key), color = if (selected) Playform.Ink else Playform.TextSecondary, fontSize = 12.sp, textAlign = TextAlign.Center)
     }
 }
 
 @Composable
 private fun StatTile(label: String, value: String, modifier: Modifier) {
     Column(modifier.clip(RoundedCornerShape(13.dp)).background(Panel).border(1.dp, BorderColor, RoundedCornerShape(13.dp)).padding(vertical = 14.dp, horizontal = 9.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(5.dp)) {
-        Text(value, color = Neon, fontWeight = FontWeight.Black, fontSize = 21.sp, textAlign = TextAlign.Center)
-        Text(label, color = Muted, fontSize = 10.sp, textAlign = TextAlign.Center, lineHeight = 13.sp)
+        Text(value, color = Playform.Ink, fontWeight = FontWeight.Black, fontSize = 21.sp, textAlign = TextAlign.Center)
+        Text(label, color = Playform.TextSecondary, fontSize = 12.sp, textAlign = TextAlign.Center, lineHeight = 13.sp)
     }
 }
 
@@ -3007,8 +3167,8 @@ private fun PrimaryActionButton(label: String, icon: androidx.compose.ui.graphic
     val scale = buttonPressScale(interaction)
     Button(onClick = onClick,
         interactionSource = interaction,
-        modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).graphicsLayer { scaleX = scale; scaleY = scale },
-        shape = RoundedCornerShape(13.dp), colors = ButtonDefaults.buttonColors(containerColor = Neon, contentColor = ButtonText)) {
+        modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp).graphicsLayer { scaleX = scale; scaleY = scale },
+        shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.buttonColors(containerColor = Playform.Coral, contentColor = Playform.Ink)) {
         androidx.compose.material3.Icon(icon, null, modifier = Modifier.size(21.dp))
         Text(label, fontSize = 15.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 8.dp))
     }
@@ -3021,7 +3181,7 @@ private fun OutlinedActionButton(label: String, icon: androidx.compose.ui.graphi
     OutlinedButton(onClick = onClick,
         interactionSource = interaction,
         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).graphicsLayer { scaleX = scale; scaleY = scale },
-        shape = RoundedCornerShape(13.dp), colors = ButtonDefaults.outlinedButtonColors(contentColor = PrimaryText)) {
+        shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.outlinedButtonColors(contentColor = Playform.Ink)) {
         androidx.compose.material3.Icon(icon, null, modifier = Modifier.size(19.dp))
         Text(label, fontSize = 13.sp, modifier = Modifier.padding(start = 8.dp))
     }
@@ -3037,7 +3197,7 @@ private fun SecondaryTile(label: String, icon: androidx.compose.ui.graphics.vect
 
 @Composable
 private fun IconButtonFrame(onClick: () -> Unit, modifier: Modifier = Modifier.size(44.dp), content: @Composable () -> Unit) {
-    Box(modifier.clip(RoundedCornerShape(12.dp)).background(Panel).border(1.dp, BorderColor, RoundedCornerShape(12.dp)).clickable { onClick() }, contentAlignment = Alignment.Center) { content() }
+    Box(modifier.clip(RoundedCornerShape(12.dp)).background(Playform.White).border(1.dp, Playform.Border, RoundedCornerShape(12.dp)).clickable { onClick() }, contentAlignment = Alignment.Center) { content() }
 }
 
 private fun formatPlayTime(millis: Long, language: String): String {
