@@ -876,7 +876,7 @@ private fun ScreenHeader(title: String, onBack: () -> Unit, trailing: (@Composab
     Row(Modifier.fillMaxWidth().padding(bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
         IconButtonFrame(onClick = onBack) { androidx.compose.material3.Icon(Icons.Rounded.ArrowBack, null, tint = Muted) }
         Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
-            Text(title, color = Neon, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+            Text(title, color = Playform.Ink, fontSize = 22.sp, fontWeight = FontWeight.Black)
         }
         if (trailing != null) trailing() else Spacer(Modifier.size(44.dp))
     }
@@ -1221,7 +1221,8 @@ private fun ShopScreen(
                     fontWeight = FontWeight.Black, fontSize = 17.sp)
             }
             if (tab != "coins") {
-                Box(Modifier.fillMaxWidth().height(126.dp)
+                Box(Modifier.fillMaxWidth().height(
+                    if (LocalConfiguration.current.screenHeightDp < 650) 86.dp else 126.dp)
                     .clip(RoundedCornerShape(15.dp)).background(Color(0xFF07131B))) {
                     if (tab == "skins") when (snakeTab) {
                         "heads" -> HeadStylePreview(previewHead, state.settings.skin,
@@ -1355,7 +1356,7 @@ private fun ShopScreen(
                     }
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedButton(onClick = { previewHead = head }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp)) {
-                            Text(if (lang == "ar") "معاينة" else "Preview", color = Neon, fontSize = 12.sp)
+                            Text(if (lang == "ar") "معاينة" else "Preview", color = Playform.Ink, fontSize = 13.sp)
                         }
                         Button(
                             onClick = { if (owned) onEquipHead(head) else pendingHeadBuy = head },
@@ -1400,7 +1401,7 @@ private fun ShopScreen(
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedButton(onClick = { previewBody = body }, modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(12.dp)) {
-                            Text(if (lang == "ar") "معاينة" else "Preview", color = Neon, fontSize = 12.sp)
+                            Text(if (lang == "ar") "معاينة" else "Preview", color = Playform.Ink, fontSize = 13.sp)
                         }
                         Button(onClick = { if (owned) onEquipBody(body) else pendingBodyBuy = body },
                             enabled = if (owned) !equipped else state.stats.coins >= body.priceCoins,
@@ -1447,7 +1448,7 @@ private fun ShopScreen(
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedButton(onClick = { previewTheme = theme }, modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(12.dp)) {
-                            Text(tx(lang, "theme_preview"), fontSize = 12.sp, color = Neon)
+                            Text(tx(lang, "theme_preview"), fontSize = 13.sp, color = Playform.Ink)
                         }
                         if (owned) {
                             Button(onClick = { onApplyTheme(theme) }, enabled = !applied,
@@ -1545,7 +1546,7 @@ private fun ShopScreen(
             },
             confirmButton = {
                 TextButton(onClick = { onPurchaseTheme(theme); pendingThemeBuy = null }) {
-                    Text(if (lang == "ar") "تأكيد الشراء" else "Buy now", color = Neon, fontWeight = FontWeight.Bold)
+                    Text(if (lang == "ar") "تأكيد الشراء" else "Buy now", color = Playform.Ink, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = { TextButton(onClick = { pendingThemeBuy = null }) { Text(tx(lang, "cancel"), color = Muted) } },
@@ -1566,7 +1567,7 @@ private fun ShopScreen(
                 }
             },
             confirmButton = { TextButton(onClick = { onPurchaseBody(body); pendingBodyBuy = null }) {
-                Text(if (lang == "ar") "تأكيد الشراء" else "Buy now", color = Neon)
+                Text(if (lang == "ar") "تأكيد الشراء" else "Buy now", color = Playform.Ink)
             } },
             dismissButton = { TextButton(onClick = { pendingBodyBuy = null }) {
                 Text(tx(lang, "cancel"), color = Muted)
@@ -1589,7 +1590,7 @@ private fun ShopScreen(
                 }
             },
             confirmButton = { TextButton(onClick = { onPurchaseHead(head); pendingHeadBuy = null }) {
-                Text(if (lang == "ar") "تأكيد الشراء" else "Buy now", color = Neon)
+                Text(if (lang == "ar") "تأكيد الشراء" else "Buy now", color = Playform.Ink)
             } },
             dismissButton = { TextButton(onClick = { pendingHeadBuy = null }) {
                 Text(tx(lang, "cancel"), color = Muted)
@@ -1613,7 +1614,7 @@ private fun ShopScreen(
             },
             confirmButton = {
                 TextButton(onClick = { onPurchase(skin); pendingBuy = null }) {
-                    Text(if (lang == "ar") "تأكيد الشراء" else "Buy now", color = Neon, fontWeight = FontWeight.Bold)
+                    Text(if (lang == "ar") "تأكيد الشراء" else "Buy now", color = Playform.Ink, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = { TextButton(onClick = { pendingBuy = null }) { Text(if (lang == "ar") "إلغاء" else "Cancel", color = Muted) } },
@@ -2304,8 +2305,8 @@ private fun ThemeOptionCard(
     Column(
         Modifier.fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
-            .background(if (selected) p.selectedPanel else p.panel)
-            .border(1.dp, if (selected) p.accent else p.border, RoundedCornerShape(14.dp))
+            .background(if (selected) Playform.PaleLavender else Playform.White)
+            .border(1.dp, if (selected) Playform.Ink else Playform.Border, RoundedCornerShape(14.dp))
             .clickable(onClick = onClick)
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -2319,13 +2320,13 @@ private fun ThemeOptionCard(
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(tx(language, titleKey), color = p.primaryText, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                Text(tx(language, descriptionKey), color = p.secondaryText, fontSize = 11.sp, lineHeight = 15.sp)
+                Text(tx(language, titleKey), color = Playform.Ink, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                Text(tx(language, descriptionKey), color = Playform.TextSecondary, fontSize = 12.sp, lineHeight = 15.sp)
             }
             if (selected) {
                 androidx.compose.material3.Icon(Icons.Rounded.CheckCircle, contentDescription = tx(language, "theme_active"), tint = p.accent, modifier = Modifier.size(22.dp))
             } else {
-                Text(tx(language, "theme_apply"), color = p.accent, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                Text(tx(language, "theme_apply"), color = Playform.Ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
             }
         }
     }
@@ -2604,7 +2605,7 @@ private fun GameScreen(state: AppUiState, viewModel: GameViewModel, rewardedAds:
                     .border(1.dp, Neon.copy(alpha = .6f), RoundedCornerShape(14.dp))
                     .padding(horizontal = 14.dp, vertical = 6.dp),
                     horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("$graceSeconds", color = Neon, fontSize = 23.sp, fontWeight = FontWeight.Black)
+                    Text("$graceSeconds", color = Playform.Ink, fontSize = 23.sp, fontWeight = FontWeight.Black)
                     Text(if (lang == "ar") "حرّك الثعبان للبدء" else "Steer to continue",
                         color = SecondaryText, fontSize = 10.sp)
                 }
@@ -2612,7 +2613,7 @@ private fun GameScreen(state: AppUiState, viewModel: GameViewModel, rewardedAds:
         }
         if (engine.shieldRemainingMs > 0L && state.screen == AppScreen.GAME) {
             Box(Modifier.fillMaxSize().padding(top = 54.dp), contentAlignment = Alignment.TopCenter) {
-                Text("🛡 ${(engine.shieldRemainingMs + 999L) / 1000L}s", color = Neon,
+                Text("🛡 ${(engine.shieldRemainingMs + 999L) / 1000L}s", color = Playform.Ink,
                     fontWeight = FontWeight.Bold, fontSize = 16.sp,
                     modifier = Modifier.clip(RoundedCornerShape(12.dp)).background(Panel).padding(horizontal = 12.dp, vertical = 5.dp))
             }
@@ -2930,7 +2931,7 @@ private fun JoystickArea(
         } else {
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
                 androidx.compose.material3.Icon(Icons.Rounded.TouchApp, null, tint = palette.joystickHint, modifier = Modifier.size(25.dp))
-                Text(tx(language, "tap_to_steer"), color = palette.muted, fontSize = 10.sp, modifier = Modifier.padding(top = 5.dp))
+                Text(tx(language, "tap_to_steer"), color = palette.muted, fontSize = 12.sp, modifier = Modifier.padding(top = 5.dp))
             }
         }
     }
@@ -2961,7 +2962,7 @@ private fun RewardPopOverlay(pop: RewardPop, balance: Long, language: String, on
             .padding(horizontal = 18.dp, vertical = 9.dp)) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("+${pop.coins} 🪙", color = Playform.GoldText, fontWeight = FontWeight.Black, fontSize = 17.sp)
-                Text("${tx(language, "coin_balance")}: $balance", color = PrimaryText, fontSize = 10.sp)
+                Text("${tx(language, "coin_balance")}: $balance", color = Playform.Ink, fontSize = 12.sp)
             }
         }
     }
@@ -3154,15 +3155,15 @@ private fun SkinChip(skin: SnakeSkin, selected: Boolean, language: String, onCli
     }
     Column(Modifier.clickable { onClick() }.padding(2.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(5.dp)) {
         Box(Modifier.size(31.dp).clip(CircleShape).background(color).border(if (selected) 3.dp else 1.dp, if (selected) Color.White else Color(0xFF53665A), CircleShape))
-        Text(tx(language, skin.key), color = if (selected) Neon else Muted, fontSize = 9.sp, textAlign = TextAlign.Center)
+        Text(tx(language, skin.key), color = if (selected) Playform.Ink else Playform.TextSecondary, fontSize = 12.sp, textAlign = TextAlign.Center)
     }
 }
 
 @Composable
 private fun StatTile(label: String, value: String, modifier: Modifier) {
     Column(modifier.clip(RoundedCornerShape(13.dp)).background(Panel).border(1.dp, BorderColor, RoundedCornerShape(13.dp)).padding(vertical = 14.dp, horizontal = 9.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(5.dp)) {
-        Text(value, color = Neon, fontWeight = FontWeight.Black, fontSize = 21.sp, textAlign = TextAlign.Center)
-        Text(label, color = Muted, fontSize = 10.sp, textAlign = TextAlign.Center, lineHeight = 13.sp)
+        Text(value, color = Playform.Ink, fontWeight = FontWeight.Black, fontSize = 21.sp, textAlign = TextAlign.Center)
+        Text(label, color = Playform.TextSecondary, fontSize = 12.sp, textAlign = TextAlign.Center, lineHeight = 13.sp)
     }
 }
 
