@@ -1267,11 +1267,6 @@ private fun ShopScreen(
     Column(Modifier.fillMaxSize().background(Playform.Cream)
         .padding(horizontal = 16.dp, vertical = 12.dp)) {
         ScreenHeader(if (lang == "ar") "عالم التخصيص" else "Style Lab", onBack)
-        PlayformPageIntro(
-            if (lang == "ar") "خلّي ثعبانك مميز" else "Make it your own",
-            if (lang == "ar") "جرّب العناصر قبل تجهيزها" else "Preview a look before equipping it."
-        )
-        Spacer(Modifier.height(9.dp))
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             ChoiceChip(tx(lang, "shop_skins"), tab == "skins") { tab = "skins" }
@@ -1281,21 +1276,24 @@ private fun ShopScreen(
                 ChoiceChip(tx(lang, "shop_coins"), tab == "coins") { tab = "coins" }
             }
         }
-        Spacer(Modifier.height(9.dp))
-        PlayformDarkCard {
+        Spacer(Modifier.height(5.dp))
+        // Compact PLAYFORM preview leaves more room for the real inventory.
+        Column(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
+                .background(Playform.Ink)
+                .padding(horizontal = 13.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(7.dp)
+        ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    PlayformTag("LIVE PREVIEW")
-                    Text(if (lang == "ar") "عاين ثعبانك" else "Your Snake",
-                        color = Playform.White, fontSize = 19.sp,
-                        fontWeight = FontWeight.Black)
-                }
+                Text("LIVE PREVIEW", color = Playform.Gold,
+                    fontSize = 11.sp, fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f))
                 Text("🪙 ${state.stats.coins}", color = Playform.Gold,
-                    fontSize = 16.sp, fontWeight = FontWeight.Black)
+                    fontSize = 15.sp, fontWeight = FontWeight.Black)
             }
             if (tab != "coins") {
                 Box(Modifier.fillMaxWidth()
-                    .height(if (LocalConfiguration.current.screenHeightDp < 650) 85.dp else 120.dp)
+                    .height(if (LocalConfiguration.current.screenHeightDp < 650) 78.dp else 96.dp)
                     .clip(RoundedCornerShape(14.dp)).background(Color(0xFF07131B))) {
                     if (tab == "skins") when (snakeTab) {
                         "heads" -> HeadStylePreview(previewHead, state.settings.skin,
@@ -1306,14 +1304,11 @@ private fun ShopScreen(
                             state.settings.headStyle, state.settings.bodyType)
                     } else ThemeMiniPreview(previewTheme, state.settings.skin, Modifier.fillMaxSize())
                 }
-                Text(if (lang == "ar") "المعاينة لا تجهّز العنصر أو تشتريه تلقائيًا"
-                    else "Previewing does not equip or buy an item.",
-                    color = Playform.LightOnDark, fontSize = 12.sp, lineHeight = 17.sp)
             }
         }
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(6.dp))
         LazyColumn(Modifier.fillMaxWidth().weight(1f),
-            verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (tab == "skins") {
                 item {
                     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
