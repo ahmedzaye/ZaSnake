@@ -2561,7 +2561,7 @@ private fun GameScreen(state: AppUiState, viewModel: GameViewModel, rewardedAds:
                     }
                     Column(Modifier.weight(0.66f).fillMaxHeight()) {
                         androidx.compose.runtime.CompositionLocalProvider(LocalLayoutDirection provides layoutDirection) {
-                            GameScoreBar(state, engine, Modifier.fillMaxWidth().height(48.dp), onPause = viewModel::requestPause)
+                            GameScoreBar(state, engine, Modifier.fillMaxWidth().height(60.dp), onPause = viewModel::requestPause)
                         }
                         BoxWithConstraints(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                             val side = min(maxWidth.value, maxHeight.value).dp
@@ -2579,7 +2579,7 @@ private fun GameScreen(state: AppUiState, viewModel: GameViewModel, rewardedAds:
             // Any unused vertical space belongs to the touch region, not a blank board container.
             val horizontalPadding = 8.dp
             val verticalPadding = 6.dp
-            val scoreHeight = 48.dp
+            val scoreHeight = 60.dp
             val minimumControlHeight = if (dPadSelected) 178.dp else 132.dp
             val boardSide = min(
                 (maxWidth - horizontalPadding * 2).value,
@@ -2698,7 +2698,7 @@ private fun DPadButton(direction: Direction, size: Dp, enabled: Boolean, onDirec
         contentAlignment = Alignment.Center
     ) {
         androidx.compose.material3.Icon(icon, contentDescription = direction.name,
-            tint = if (pressed && enabled) palette.bg else palette.joystickKnob,
+            tint = if (pressed && enabled) Playform.Ink else palette.joystickKnob,
             modifier = Modifier.size(size * 0.68f))
     }
 }
@@ -2712,7 +2712,7 @@ private fun GameScoreBar(state: AppUiState, engine: com.ahmedzayed.zasnake.game.
         ScoreItem(if (engine.mode == GameMode.TIME_ATTACK) tx(lang, "time") else tx(lang, "level"),
             if (engine.mode == GameMode.TIME_ATTACK) ((engine.timeRemainingMs + 999) / 1000).toString() else engine.level.toString(), Modifier.weight(1f))
         IconButtonFrame(onClick = onPause, modifier = Modifier.size(42.dp)) {
-            androidx.compose.material3.Icon(Icons.Rounded.Pause, null, tint = Neon)
+            androidx.compose.material3.Icon(Icons.Rounded.Pause, tx(lang, "pause_title"), tint = Playform.Ink)
         }
     }
 }
@@ -2727,15 +2727,15 @@ private fun ScoreItem(label: String, value: String, modifier: Modifier, highligh
         }
     }
     Column(
-        modifier.fillMaxHeight().clip(RoundedCornerShape(8.dp)).background(Panel)
-            .border(1.dp, BorderColor, RoundedCornerShape(8.dp))
-            .padding(horizontal = 3.dp, vertical = 2.dp),
+        modifier.fillMaxHeight().clip(RoundedCornerShape(14.dp)).background(Playform.White)
+            .border(1.dp, Playform.Border, RoundedCornerShape(14.dp))
+            .padding(horizontal = 4.dp, vertical = 3.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text(label, color = LocalZaPalette.current.scoreLabel, fontSize = 9.sp,
-            lineHeight = 11.sp, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
-        Text(value, color = Neon, fontSize = 16.sp, lineHeight = 18.sp,
+        Text(label, color = LocalZaPalette.current.scoreLabel, fontSize = 11.sp,
+            lineHeight = 14.sp, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
+        Text(value, color = Playform.Ink, fontSize = 18.sp, lineHeight = 21.sp,
             modifier = Modifier.graphicsLayer {
                 scaleX = 1f + .10f * pulse.value
                 scaleY = 1f + .10f * pulse.value
@@ -2748,7 +2748,7 @@ private fun ScoreItem(label: String, value: String, modifier: Modifier, highligh
 private fun GameBoard(engine: com.ahmedzayed.zasnake.game.SnakeEngine, frameVersion: Long, skin: SnakeSkin, headStyle: SnakeHeadStyle, bodyType: SnakeBodyType, cues: List<VisualCue>, modifier: Modifier) {
     val palette = LocalBoardPalette.current
     val motionEnabled = LocalVisualMotionEnabled.current
-    Canvas(modifier = modifier.clip(RoundedCornerShape(4.dp)).border(1.dp, palette.boardBorder, RoundedCornerShape(4.dp))) {
+    Canvas(modifier = modifier.clip(RoundedCornerShape(12.dp)).border(2.dp, palette.boardBorder, RoundedCornerShape(12.dp))) {
         // Capturing the frame marker invalidates the draw closure while the ViewModel ticks.
         if (frameVersion == Long.MIN_VALUE) return@Canvas
         drawRect(palette.boardBackground)
@@ -2960,7 +2960,7 @@ private fun RewardPopOverlay(pop: RewardPop, balance: Long, language: String, on
             .background(SelectedPanel).border(1.dp, Gold, RoundedCornerShape(25.dp))
             .padding(horizontal = 18.dp, vertical = 9.dp)) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("+${pop.coins} 🪙", color = Gold, fontWeight = FontWeight.Black, fontSize = 17.sp)
+                Text("+${pop.coins} 🪙", color = Playform.GoldText, fontWeight = FontWeight.Black, fontSize = 17.sp)
                 Text("${tx(language, "coin_balance")}: $balance", color = PrimaryText, fontSize = 10.sp)
             }
         }
@@ -2970,9 +2970,9 @@ private fun RewardPopOverlay(pop: RewardPop, balance: Long, language: String, on
 @Composable
 private fun PauseCard(state: AppUiState, viewModel: GameViewModel) {
     val lang = state.settings.language
-    Column(Modifier.fillMaxWidth(0.86f).widthIn(max = 360.dp).clip(RoundedCornerShape(22.dp)).background(Panel).border(1.dp, BorderColor, RoundedCornerShape(22.dp)).padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(11.dp)) {
+    Column(Modifier.fillMaxWidth(0.90f).widthIn(max = 360.dp).clip(RoundedCornerShape(25.dp)).background(Playform.Cream).border(1.dp, Playform.Border, RoundedCornerShape(25.dp)).padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(11.dp)) {
         androidx.compose.material3.Icon(Icons.Rounded.Pause, null, tint = Neon, modifier = Modifier.size(42.dp))
-        Text(tx(lang, "pause_title"), color = Neon, fontSize = 23.sp, fontWeight = FontWeight.Bold)
+        Text(tx(lang, "pause_title"), color = Playform.Ink, fontSize = 23.sp, fontWeight = FontWeight.Bold)
         val detailLabel = if (viewModel.engine.mode == GameMode.TIME_ATTACK) tx(lang, "time") else tx(lang, "level")
         val detailValue = if (viewModel.engine.mode == GameMode.TIME_ATTACK) "${(viewModel.engine.timeRemainingMs + 999L) / 1000L}s" else viewModel.engine.level.toString()
         Text("${tx(lang, "score")}: ${viewModel.engine.score}  •  $detailLabel: $detailValue", color = Muted, fontSize = 13.sp)
@@ -2998,23 +2998,23 @@ private fun GameOverCard(state: AppUiState, viewModel: GameViewModel, rewardedAd
     BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
     Column(Modifier.fillMaxWidth(0.90f).widthIn(max = 370.dp)
         .heightIn(max = (maxHeight - 12.dp).coerceAtLeast(1.dp))
-        .clip(RoundedCornerShape(22.dp)).background(Panel)
-        .border(1.dp, BorderColor, RoundedCornerShape(22.dp))
+        .clip(RoundedCornerShape(25.dp)).background(Playform.Cream)
+        .border(1.dp, Playform.Border, RoundedCornerShape(25.dp))
         .verticalScroll(rememberScrollState()).padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp)) {
         androidx.compose.material3.Icon(Icons.Rounded.EmojiEvents, null, tint = Gold, modifier = Modifier.size(44.dp))
-        Text(title, color = PrimaryText, fontSize = 23.sp, fontWeight = FontWeight.Bold)
+        Text(title, color = Playform.Ink, fontSize = 23.sp, fontWeight = FontWeight.Bold)
         if (state.newRecordThisRound) {
-            Text("✦ ${tx(lang, "new_record_visual")} ✦", color = Gold,
+            Text("✦ ${tx(lang, "new_record_visual")} ✦", color = Playform.GoldText,
                 fontSize = 14.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
         }
         Text(tx(lang, "your_score"), color = Muted, fontSize = 13.sp)
-        Text(scoreCount.value.roundToInt().toString(), color = Neon,
+        Text(scoreCount.value.roundToInt().toString(), color = Playform.CoralText,
             fontSize = 42.sp, fontWeight = FontWeight.Black)
         Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(LocalZaPalette.current.statsTile).padding(13.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Text(tx(lang, "best_score"), color = SecondaryText, fontSize = 12.sp)
-            Text(state.stats.bestScore.toString(), color = Gold, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            Text((if (engine.mode == GameMode.TIME_ATTACK) state.stats.bestTimeScore else state.stats.bestScore).toString(), color = Gold, fontWeight = FontWeight.Bold, fontSize = 18.sp)
         }
         if (engine.mode == GameMode.CLASSIC) {
             val earned = if (engine.pendingCollision) engine.score else state.stats.coinRewards[engine.sessionId] ?: 0
@@ -3180,8 +3180,8 @@ private fun PrimaryActionButton(label: String, icon: androidx.compose.ui.graphic
     val scale = buttonPressScale(interaction)
     Button(onClick = onClick,
         interactionSource = interaction,
-        modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).graphicsLayer { scaleX = scale; scaleY = scale },
-        shape = RoundedCornerShape(13.dp), colors = ButtonDefaults.buttonColors(containerColor = Neon, contentColor = ButtonText)) {
+        modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp).graphicsLayer { scaleX = scale; scaleY = scale },
+        shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.buttonColors(containerColor = Playform.Coral, contentColor = Playform.Ink)) {
         androidx.compose.material3.Icon(icon, null, modifier = Modifier.size(21.dp))
         Text(label, fontSize = 15.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 8.dp))
     }
@@ -3194,7 +3194,7 @@ private fun OutlinedActionButton(label: String, icon: androidx.compose.ui.graphi
     OutlinedButton(onClick = onClick,
         interactionSource = interaction,
         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).graphicsLayer { scaleX = scale; scaleY = scale },
-        shape = RoundedCornerShape(13.dp), colors = ButtonDefaults.outlinedButtonColors(contentColor = PrimaryText)) {
+        shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.outlinedButtonColors(contentColor = Playform.Ink)) {
         androidx.compose.material3.Icon(icon, null, modifier = Modifier.size(19.dp))
         Text(label, fontSize = 13.sp, modifier = Modifier.padding(start = 8.dp))
     }
@@ -3210,7 +3210,7 @@ private fun SecondaryTile(label: String, icon: androidx.compose.ui.graphics.vect
 
 @Composable
 private fun IconButtonFrame(onClick: () -> Unit, modifier: Modifier = Modifier.size(44.dp), content: @Composable () -> Unit) {
-    Box(modifier.clip(RoundedCornerShape(12.dp)).background(Panel).border(1.dp, BorderColor, RoundedCornerShape(12.dp)).clickable { onClick() }, contentAlignment = Alignment.Center) { content() }
+    Box(modifier.clip(RoundedCornerShape(12.dp)).background(Playform.White).border(1.dp, Playform.Border, RoundedCornerShape(12.dp)).clickable { onClick() }, contentAlignment = Alignment.Center) { content() }
 }
 
 private fun formatPlayTime(millis: Long, language: String): String {
