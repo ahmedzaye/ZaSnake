@@ -1804,7 +1804,10 @@ private fun SettingsScreen(
         selectedCategory = null
     }
 
-    if (selectedCategory == null) {
+    if (selectedCategory == "account_stats") {
+        StatisticsScreen(state, onBack = { selectedCategory = "account" },
+            onClaimReward = { false }, achievementsOnly = false)
+    } else if (selectedCategory == null) {
         LazyColumn(
             Modifier.fillMaxSize().background(Bg).padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -1846,6 +1849,17 @@ private fun SettingsScreen(
                     onClick = { selectedCategory = "account" }
                 )
             }
+            item {
+                PlayformDarkCard {
+                    PlayformTag("YOUR SPACE")
+                    Text(if (lang == "ar") "ظبّط اللعبة على مزاجك" else "Make the game yours",
+                        color = Playform.White, fontWeight = FontWeight.Black, fontSize = 18.sp)
+                    Text(if (lang == "ar")
+                        "اختياراتك الحالية تفضل محفوظة، والثيمات المملوكة تفضل متاحة."
+                        else "Your preferences and unlocked looks stay available.",
+                        color = Playform.LightOnDark, fontSize = 13.sp, lineHeight = 19.sp)
+                }
+            }
             item { Spacer(Modifier.height(8.dp)) }
         }
     } else {
@@ -1856,6 +1870,16 @@ private fun SettingsScreen(
             item { ScreenHeader(tx(lang, selectedCategory!!), onBack = { selectedCategory = null }) }
             when (selectedCategory) {
                 "account" -> {
+                    item {
+                        SettingsCategoryCard(
+                            title = tx(lang, "statistics"),
+                            description = if (lang == "ar") "نتائجك ومبارياتك ووقت اللعب"
+                                else "Scores, games and total playtime",
+                            icon = Icons.Rounded.BarChart,
+                            accent = Playform.Lavender,
+                            onClick = { selectedCategory = "account_stats" }
+                        )
+                    }
                     item {
                         SettingsPanel {
                             SettingHeading(tx(lang, "player_name"), Icons.Rounded.Person)
@@ -2294,32 +2318,51 @@ private fun SettingsCategoryCard(
 }
 
 @Composable
-private fun StatisticsScreen(state: AppUiState, onBack: () -> Unit, onClaimReward: (String) -> Boolean) {
+private fun StatisticsScreen(
+    state: AppUiState,
+    onBack: () -> Unit,
+    onClaimReward: (String) -> Boolean,
+    achievementsOnly: Boolean = state.statisticsOpenAchievements
+) {
     val lang = state.settings.language
-    var selectedTab by remember(state.statisticsOpenAchievements) {
-        mutableStateOf(if (state.statisticsOpenAchievements) 1 else 0)
-    }
+    val ar = lang == "ar"
     val stats = state.stats
-    LazyColumn(Modifier.fillMaxSize().background(Bg).padding(horizontal = 16.dp, vertical = 12.dp)) {
-        item { ScreenHeader(tx(lang, "stats_achievements"), onBack) }
+    var filter by remember { mutableStateOf("all") }
+    val unlockedCount = ACHIEVEMENTS.count {
+        it.id in stats.unlockedAchievements || it.progress(stats) >= it.target
+    }
+    val availableCoins = ACHIEVEMENTS.filter {
+        (it.id in stats.unlockedAchievements || it.progress(stats) >= it.target) &&
+            it.id !in stats.claimedAchievementRewards
+    }.sumOf { it.rewardCoins }
+    LazyColumn(Modifier.fillMaxSize().background(Playform.Cream)
+        .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(11.dp)) {
         item {
-            Row(Modifier.fillMaxWidth().background(Panel, RoundedCornerShape(13.dp)).padding(4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                ChoiceChip(tx(lang, "statistics"), selectedTab == 0, Modifier.weight(1f)) { selectedTab = 0 }
-                ChoiceChip(tx(lang, "achievements"), selectedTab == 1, Modifier.weight(1f)) { selectedTab = 1 }
-            }
-            Spacer(Modifier.height(14.dp))
+            ScreenHeader(tx(lang, if (achievementsOnly) "achievements" else "statistics"), onBack)
         }
-        if (selectedTab == 0) {
+        if (!achievementsOnly) {
             item {
-                // LTR outer row fixes the physical placement in both languages:
-                // Time Attack left, Classic best score right.
-                androidx.compose.runtime.CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        StatTile(tx(lang, "best_time"), stats.bestTimeScore.toString(), Modifier.weight(1f))
-                        StatTile(tx(lang, "best_score"), stats.bestScore.toString(), Modifier.weight(1f))
-                    }
+                PlayformDarkCard {
+                    PlayformTag("YOUR NUMBERS")
+                    Text(if (ar) "رحلتك بالأرقام" else "Your Journey in Numbers",
+                        color = Playform.White, fontSize = 23.sp,
+                        fontWeight = FontWeight.Black)
+                    Text(if (ar) "إحصائياتك المحفوظة عبر الجولات"
+                        else "Your saved game progress",
+                        color = Playform.LightOnDark, fontSize = 13.sp)
                 }
-                Spacer(Modifier.height(12.dp))
+            }
+            item {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.fillMaxWidth()) {
+                    PlayformCounterTile(tx(lang, "best_score"),
+                        stats.bestScore.toString(), Modifier.weight(1f), Playform.Gold)
+                    PlayformCounterTile(tx(lang, "best_time"),
+                        stats.bestTimeScore.toString(), Modifier.weight(1f), Playform.Lavender)
+                }
+            }
+            item {
                 val values = listOf(
                     tx(lang, "games") to stats.games.toString(),
                     tx(lang, "food_eaten") to stats.food.toString(),
@@ -2328,117 +2371,125 @@ private fun StatisticsScreen(state: AppUiState, onBack: () -> Unit, onClaimRewar
                     tx(lang, "scissors") to stats.scissors.toString(),
                     tx(lang, "longest_snake") to stats.maxLength.toString()
                 )
-                values.chunked(2).forEach { rowItems ->
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        rowItems.forEach { (label, value) -> StatTile(label, value, Modifier.weight(1f)) }
-                        if (rowItems.size == 1) Spacer(Modifier.weight(1f))
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    values.chunked(2).forEach { pair ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            pair.forEach { (label, value) ->
+                                PlayformCounterTile(label, value, Modifier.weight(1f))
+                            }
+                        }
                     }
-                    Spacer(Modifier.height(10.dp))
                 }
             }
         } else {
             item {
-                val unlockedCount = ACHIEVEMENTS.count { it.id in stats.unlockedAchievements || it.progress(stats) >= it.target }
-                val claimedCount = ACHIEVEMENTS.count { it.id in stats.claimedAchievementRewards }
-                val claimedCoins = ACHIEVEMENTS.sumOf { stats.claimedAchievementRewards[it.id] ?: 0 }
-                val availableCoins = ACHIEVEMENTS.filter { (it.id in stats.unlockedAchievements || it.progress(stats) >= it.target) && it.id !in stats.claimedAchievementRewards }
-                    .sumOf { it.rewardCoins }
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = SelectedPanel),
-                    shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                        Text("$unlockedCount / ${ACHIEVEMENTS.size} ${tx(lang, "achievements")}", color = Neon, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                        Text("${tx(lang, "achievement_reward_total")}: ${ACHIEVEMENTS.sumOf { it.rewardCoins }} 🪙", color = PrimaryText, fontSize = 12.sp)
-                        Text("${tx(lang, "achievement_reward_earned")}: $claimedCoins 🪙 ($claimedCount / ${ACHIEVEMENTS.size})", color = SecondaryText, fontSize = 12.sp)
-                        Text("${tx(lang, "achievement_reward_available")}: $availableCoins 🪙", color = if (availableCoins > 0) Gold else Muted, fontSize = 12.sp)
+                PlayformDarkCard {
+                    PlayformTag("ACHIEVEMENT GALLERY")
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("$unlockedCount / ${ACHIEVEMENTS.size}",
+                                color = Playform.White, fontWeight = FontWeight.Black,
+                                fontSize = 32.sp)
+                            Text(if (ar) "إنجازات مفتوحة" else "Achievements unlocked",
+                                color = Playform.LightOnDark, fontSize = 13.sp)
+                        }
+                        Text("🏆", fontSize = 50.sp)
+                    }
+                    PlayformProgressBar(unlockedCount.toFloat() / ACHIEVEMENTS.size.toFloat(),
+                        color = Playform.Gold)
+                    Text(if (ar) "$availableCoins عملة جاهزة للاستلام"
+                        else "$availableCoins coins ready to claim",
+                        color = Playform.LightOnDark, fontSize = 12.sp)
+                    Text(if (ar) "إجمالي المكافآت: 1,225 عملة"
+                        else "Total achievement rewards: 1,225 coins",
+                        color = Playform.LightOnDark, fontSize = 12.sp)
+                }
+            }
+            item {
+                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    listOf(
+                        "all" to (if (ar) "الكل" else "All"),
+                        "ready" to (if (ar) "جاهزة" else "Ready"),
+                        "progress" to (if (ar) "قيد التقدم" else "In progress"),
+                        "claimed" to (if (ar) "مستلمة" else "Claimed")
+                    ).forEach { (key, label) ->
+                        ChoiceChip(label, filter == key) { filter = key }
                     }
                 }
-                Spacer(Modifier.height(12.dp))
             }
-            items(ACHIEVEMENTS, key = { it.id }) { achievement ->
-                val unlocked = achievement.id in stats.unlockedAchievements || achievement.progress(stats) >= achievement.target
+            val visible = ACHIEVEMENTS.filter { achievement ->
+                val unlocked = achievement.id in stats.unlockedAchievements ||
+                    achievement.progress(stats) >= achievement.target
+                val claimed = achievement.id in stats.claimedAchievementRewards
+                when (filter) {
+                    "ready" -> unlocked && !claimed
+                    "progress" -> !unlocked
+                    "claimed" -> claimed
+                    else -> true
+                }
+            }
+            items(visible, key = { it.id }) { achievement ->
+                val unlocked = achievement.id in stats.unlockedAchievements ||
+                    achievement.progress(stats) >= achievement.target
                 val claimed = achievement.id in stats.claimedAchievementRewards
                 val progress = achievement.progress(stats).coerceAtLeast(0L)
-                val shownProgress = if (unlocked) maxOf(progress, achievement.target) else progress
-                val ratio = if (achievement.target <= 0) 1f else (shownProgress.toFloat() / achievement.target.toFloat()).coerceIn(0f, 1f)
-                val progressText = if (achievement.id == "dedicated" || achievement.id == "play60min") {
-                    "${formatPlayTime(shownProgress.coerceAtMost(achievement.target), lang)} / ${formatPlayTime(achievement.target, lang)}"
-                } else "${shownProgress.coerceAtMost(achievement.target)} / ${achievement.target}"
-
-                // Compact achievement row: keep manual claiming visible without a full-width button.
-                Card(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
-                    shape = RoundedCornerShape(11.dp),
-                    colors = CardDefaults.cardColors(containerColor = if (unlocked) SelectedPanel else Panel)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 72.dp)
-                            .padding(horizontal = 8.dp, vertical = 7.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier.size(38.dp).clip(RoundedCornerShape(9.dp))
-                                .background(if (unlocked) Gold.copy(alpha = 0.18f) else Bg),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(if (unlocked) achievement.icon else "🔒", fontSize = 19.sp)
+                val shown = if (unlocked) maxOf(progress, achievement.target) else progress
+                val ratio = if (achievement.target <= 0) 1f
+                    else (shown.toFloat() / achievement.target.toFloat()).coerceIn(0f, 1f)
+                val progressText = if (achievement.id == "dedicated" ||
+                    achievement.id == "play60min") {
+                    "${formatPlayTime(shown.coerceAtMost(achievement.target), lang)} / ${formatPlayTime(achievement.target, lang)}"
+                } else "${shown.coerceAtMost(achievement.target)} / ${achievement.target}"
+                PlayformCard(background = if (unlocked) Color(0xFFFFFDF6) else Playform.White) {
+                    Row(verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Box(Modifier.size(49.dp).clip(RoundedCornerShape(15.dp))
+                            .background(if (unlocked) Playform.Gold else Playform.PaleLavender),
+                            contentAlignment = Alignment.Center) {
+                            Text(if (unlocked) achievement.icon else "🔒", fontSize = 23.sp)
                         }
-                        Column(
-                            modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(3.dp)
-                        ) {
-                            Text(
-                                if (lang == "ar") achievement.arName else achievement.enName,
-                                color = if (unlocked) Gold else PrimaryText,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Text(
-                                if (lang == "ar") achievement.arDescription else achievement.enDescription,
-                                color = Muted,
-                                fontSize = 10.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                                LinearProgressIndicator(
-                                    progress = { ratio },
-                                    modifier = Modifier.weight(1f).height(4.dp).clip(CircleShape),
-                                    color = if (unlocked) Gold else Neon,
-                                    trackColor = BorderColor
-                                )
-                                Text(progressText, color = Muted, fontSize = 9.sp, maxLines = 1)
-                            }
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                            Text(if (ar) achievement.arName else achievement.enName,
+                                color = Playform.Ink, fontSize = 14.sp, fontWeight = FontWeight.Black)
+                            Text(if (ar) achievement.arDescription else achievement.enDescription,
+                                color = Playform.TextSecondary, fontSize = 12.sp,
+                                lineHeight = 17.sp)
+                            PlayformProgressBar(ratio,
+                                color = if (unlocked) Playform.GoldText else Playform.Lavender)
+                            Text(progressText, color = Playform.TextSecondary, fontSize = 12.sp)
                         }
-                        Column(
-                            modifier = Modifier.width(76.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(3.dp)
-                        ) {
-                            Text("🪙 ${achievement.rewardCoins}", color = Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Column(horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text("🪙 ${achievement.rewardCoins}", color = Playform.GoldText,
+                                fontWeight = FontWeight.Black, fontSize = 12.sp)
                             when {
-                                claimed -> Text(tx(lang, "claimed_short"), color = Neon, fontSize = 10.sp, maxLines = 1)
+                                claimed -> PlayformStatusPill(tx(lang, "claimed_short"),
+                                    color = Color(0xFF286C5B), background = Playform.PaleMint)
                                 unlocked -> Button(
                                     onClick = { onClaimReward(achievement.id) },
-                                    modifier = Modifier.fillMaxWidth().height(30.dp),
-                                    shape = RoundedCornerShape(8.dp),
-                                    contentPadding = PaddingValues(horizontal = 3.dp, vertical = 0.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = Neon, contentColor = ButtonText)
-                                ) {
-                                    Text(tx(lang, "claim_short"), fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-                                }
-                                else -> Text(tx(lang, "reward_pending"), color = Muted, fontSize = 10.sp, maxLines = 1)
+                                    modifier = Modifier.heightIn(min = 44.dp),
+                                    contentPadding = PaddingValues(horizontal = 11.dp),
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Playform.Coral, contentColor = Playform.Ink)
+                                ) { Text(tx(lang, "claim_short"), fontSize = 12.sp) }
+                                else -> Text(tx(lang, "reward_pending"),
+                                    color = Playform.TextSecondary, fontSize = 11.sp)
                             }
                         }
                     }
+                }
+            }
+            if (visible.isEmpty()) item {
+                PlayformCard {
+                    Text(if (ar) "مافيش إنجازات في التصنيف ده حاليًا"
+                        else "No achievements in this category yet",
+                        color = Playform.TextSecondary, fontSize = 14.sp)
                 }
             }
         }
-        item { Spacer(Modifier.height(12.dp)) }
+        item { Spacer(Modifier.height(8.dp)) }
     }
 }
 
