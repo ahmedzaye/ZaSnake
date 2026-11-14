@@ -874,7 +874,14 @@ fun ZaSnakeApp(
 @Composable
 private fun ScreenHeader(title: String, onBack: () -> Unit, trailing: (@Composable () -> Unit)? = null) {
     Row(Modifier.fillMaxWidth().padding(bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-        IconButtonFrame(onClick = onBack) { androidx.compose.material3.Icon(Icons.Rounded.ArrowBack, null, tint = Muted) }
+        IconButtonFrame(onClick = onBack) {
+            androidx.compose.material3.Icon(
+                if (LocalLayoutDirection.current == LayoutDirection.Rtl) Icons.Rounded.KeyboardArrowRight
+                else Icons.Rounded.ArrowBack,
+                contentDescription = if (LocalLayoutDirection.current == LayoutDirection.Rtl) "رجوع" else "Back",
+                tint = Playform.Ink
+            )
+        }
         Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
             Text(title, color = Playform.Ink, fontSize = 22.sp, fontWeight = FontWeight.Black)
         }
@@ -2919,16 +2926,41 @@ private fun RewardPopOverlay(pop: RewardPop, balance: Long, language: String, on
 @Composable
 private fun PauseCard(state: AppUiState, viewModel: GameViewModel) {
     val lang = state.settings.language
-    Column(Modifier.fillMaxWidth(0.90f).widthIn(max = 360.dp).clip(RoundedCornerShape(25.dp)).background(Playform.Cream).border(1.dp, Playform.Border, RoundedCornerShape(25.dp)).padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(11.dp)) {
-        androidx.compose.material3.Icon(Icons.Rounded.Pause, null, tint = Neon, modifier = Modifier.size(42.dp))
-        Text(tx(lang, "pause_title"), color = Playform.Ink, fontSize = 23.sp, fontWeight = FontWeight.Bold)
-        val detailLabel = if (viewModel.engine.mode == GameMode.TIME_ATTACK) tx(lang, "time") else tx(lang, "level")
-        val detailValue = if (viewModel.engine.mode == GameMode.TIME_ATTACK) "${(viewModel.engine.timeRemainingMs + 999L) / 1000L}s" else viewModel.engine.level.toString()
-        Text("${tx(lang, "score")}: ${viewModel.engine.score}  •  $detailLabel: $detailValue", color = Muted, fontSize = 13.sp)
+    val ar = lang == "ar"
+    val engine = viewModel.engine
+    val detailLabel = if (engine.mode == GameMode.TIME_ATTACK) tx(lang, "time")
+        else tx(lang, "level")
+    val detailValue = if (engine.mode == GameMode.TIME_ATTACK)
+        "${(engine.timeRemainingMs + 999L) / 1000L}s"
+        else engine.level.toString()
+    Column(
+        Modifier.fillMaxWidth(0.90f).widthIn(max = 360.dp)
+            .clip(RoundedCornerShape(25.dp)).background(Playform.Cream)
+            .border(1.dp, Playform.Border, RoundedCornerShape(25.dp))
+            .padding(19.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(11.dp)
+    ) {
+        Box(Modifier.size(58.dp).clip(RoundedCornerShape(19.dp))
+            .background(Playform.PaleLavender), contentAlignment = Alignment.Center) {
+            androidx.compose.material3.Icon(Icons.Rounded.Pause, tx(lang, "pause_title"),
+                tint = Playform.Ink, modifier = Modifier.size(36.dp))
+        }
+        PlayformTag("TAKE A BREAK", color = Playform.CoralText)
+        Text(tx(lang, "pause_title"), color = Playform.Ink, fontSize = 23.sp,
+            lineHeight = 30.sp, fontWeight = FontWeight.Black, textAlign = TextAlign.Center)
+        Text(if (ar) "تقدر تكمل جولتك من نفس المكان" else "Pick up right where you left off",
+            color = Playform.TextSecondary, fontSize = 13.sp, textAlign = TextAlign.Center)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            PlayformCounterTile(tx(lang, "score"), engine.score.toString(),
+                Modifier.weight(1f))
+            PlayformCounterTile(detailLabel, detailValue, Modifier.weight(1f))
+        }
         PrimaryActionButton(tx(lang, "continue"), Icons.Rounded.PlayArrow, viewModel::resumeFromPause)
         OutlinedActionButton(tx(lang, "restart"), Icons.Rounded.Replay, viewModel::requestRestart)
         OutlinedActionButton(tx(lang, "main_menu"), Icons.Rounded.Home, viewModel::goHomeKeepingRound)
-        Text(tx(lang, "paused_save"), color = Muted, fontSize = 11.sp)
+        Text(tx(lang, "paused_save"), color = Playform.TextSecondary, fontSize = 12.sp,
+            textAlign = TextAlign.Center)
     }
 }
 
@@ -2952,7 +2984,13 @@ private fun GameOverCard(state: AppUiState, viewModel: GameViewModel, rewardedAd
         .verticalScroll(rememberScrollState()).padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        androidx.compose.material3.Icon(Icons.Rounded.EmojiEvents, null, tint = Gold, modifier = Modifier.size(44.dp))
+        Box(Modifier.size(58.dp).clip(RoundedCornerShape(18.dp))
+            .background(Playform.Gold), contentAlignment = Alignment.Center) {
+            androidx.compose.material3.Icon(Icons.Rounded.EmojiEvents, null,
+                tint = Playform.Ink, modifier = Modifier.size(34.dp))
+        }
+        PlayformTag(if (engine.mode == GameMode.TIME_ATTACK) "TIME ATTACK" else "RUN COMPLETE",
+            color = Playform.CoralText)
         Text(title, color = Playform.Ink, fontSize = 23.sp, fontWeight = FontWeight.Bold)
         if (state.newRecordThisRound) {
             Text("✦ ${tx(lang, "new_record_visual")} ✦", color = Playform.GoldText,
