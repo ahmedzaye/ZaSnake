@@ -313,7 +313,24 @@ private fun paletteFor(theme: GameTheme): ZaPalette = when (theme) {
     )
 }
 
-private val LocalZaPalette = staticCompositionLocalOf { paletteFor(GameTheme.NIGHT) }
+// The game-board uses the actual purchased theme independently of PLAYFORM menus.
+private val LocalBoardPalette = staticCompositionLocalOf { paletteFor(GameTheme.NIGHT) }
+private fun playformPalette(): ZaPalette = paletteFor(GameTheme.LIGHT).copy(
+    bg = Playform.Cream, panel = Playform.White, panel2 = Playform.White,
+    accent = Playform.Coral, muted = Playform.TextSecondary,
+    gold = Playform.GoldText, blue = Playform.Ink,
+    primaryText = Playform.Ink, secondaryText = Playform.TextSecondary,
+    border = Playform.Border, divider = Playform.Border,
+    selectedPanel = Playform.PaleLavender, chipBackground = Playform.White,
+    buttonText = Playform.Ink, joystickGlow = Playform.PaleLavender,
+    joystickGlowClear = Color.Transparent, joystickRing = Playform.Lavender,
+    joystickInner = Playform.PaleLavender, joystickKnob = Playform.Coral,
+    joystickHighlight = Playform.White, joystickHint = Playform.TextSecondary,
+    overlay = Color(0xCE11152A), homeTop = Playform.Cream,
+    homeBottom = Playform.Cream, scoreLabel = Playform.TextSecondary,
+    statsTile = Playform.White
+)
+private val LocalZaPalette = staticCompositionLocalOf { playformPalette() }
 // Android's animator-duration scale (including "Remove animations") is respected.
 private val LocalVisualMotionEnabled = staticCompositionLocalOf { true }
 private data class RewardPop(val id: Long, val coins: Int)
@@ -547,7 +564,8 @@ fun ZaSnakeApp(
         }
     }
     val layoutDirection = if (language == "ar") LayoutDirection.Rtl else LayoutDirection.Ltr
-    val selectedPalette = paletteFor(state.settings.theme)
+    val selectedPalette = playformPalette()
+    val selectedBoardPalette = paletteFor(state.settings.theme)
     val lifecycleOwner = LocalLifecycleOwner.current
     val localContext = LocalContext.current
     val activity = localContext.findActivity()
@@ -569,8 +587,8 @@ fun ZaSnakeApp(
             window.statusBarColor = selectedPalette.bg.toArgb()
             window.navigationBarColor = selectedPalette.bg.toArgb()
             WindowCompat.getInsetsController(window, rootView).apply {
-                isAppearanceLightStatusBars = state.settings.theme == GameTheme.LIGHT || state.settings.theme == GameTheme.DESERT
-                isAppearanceLightNavigationBars = state.settings.theme == GameTheme.LIGHT || state.settings.theme == GameTheme.DESERT
+                isAppearanceLightStatusBars = true
+                isAppearanceLightNavigationBars = true
             }
         }
     }
@@ -684,6 +702,7 @@ fun ZaSnakeApp(
     androidx.compose.runtime.CompositionLocalProvider(
         LocalLayoutDirection provides layoutDirection,
         LocalZaPalette provides selectedPalette,
+        LocalBoardPalette provides selectedBoardPalette,
         LocalVisualMotionEnabled provides motionEnabled
     ) {
         Surface(modifier = Modifier.fillMaxSize().safeDrawingPadding(), color = Bg, contentColor = PrimaryText) {
@@ -875,75 +894,110 @@ private fun HomeScreen(
     onClaimAchievements: () -> Unit
 ) {
     val lang = state.settings.language
-    Column(
-        Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(LocalZaPalette.current.homeTop, Bg, LocalZaPalette.current.homeBottom))).padding(horizontal = 20.dp, vertical = 14.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+    val ar = lang == "ar"
+    val claimableCount = ACHIEVEMENTS.count { achievement ->
+        achievement.id !in state.stats.claimedAchievementRewards &&
+            (achievement.id in state.stats.unlockedAchievements ||
+                achievement.progress(state.stats) >= achievement.target)
+    }
+    LazyColumn(
+        Modifier.fillMaxSize().background(Playform.Cream)
+            .padding(horizontal = 17.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text("Za Snake", color = Neon, fontSize = 28.sp, fontWeight = FontWeight.Black, letterSpacing = 0.5.sp)
-                Text(tx(lang, "app_tagline"), color = Muted, fontSize = 12.sp)
+        item {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("ZA.SNAKE", color = Playform.Ink, fontSize = 21.sp,
+                    fontWeight = FontWeight.Black, modifier = Modifier.weight(1f))
+                PlayformStatusPill("🪙 ${state.stats.coins}",
+                    color = Playform.Ink, background = Playform.White)
+                IconButtonFrame(onClick = onSettings) {
+                    androidx.compose.material3.Icon(Icons.Rounded.Settings,
+                        contentDescription = tx(lang, "settings"), tint = Playform.Ink)
+                }
             }
         }
-        HorizontalDivider(color = DividerColor)
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            Row(
-                modifier = Modifier.clip(RoundedCornerShape(18.dp)).background(LocalZaPalette.current.statsTile)
-                    .border(1.dp, BorderColor, RoundedCornerShape(18.dp)).padding(horizontal = 13.dp, vertical = 7.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(7.dp)
-            ) {
-                Text("🪙", fontSize = 17.sp)
-                Text(state.stats.coins.toString(), color = Gold, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                Text(tx(lang, "coin_unit"), color = SecondaryText, fontSize = 11.sp)
+        item {
+            PlayformDarkCard {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        PlayformTag("ZA.SNAKE / PLAYFORM")
+                        Text(if (ar) "جاهز للعب؟" else "READY TO PLAY?",
+                            color = Playform.White, fontSize = 27.sp,
+                            lineHeight = 34.sp, fontWeight = FontWeight.Black)
+                        Text(if (ar) "اختار وضعك وحقق رقمًا جديدًا" else "Pick a mode. Beat your best.",
+                            color = Playform.LightOnDark, fontSize = 13.sp, lineHeight = 20.sp)
+                    }
+                    Image(painter = painterResource(R.drawable.za_snake_mascot),
+                        contentDescription = null,
+                        modifier = Modifier.size(108.dp).clip(RoundedCornerShape(21.dp)),
+                        contentScale = ContentScale.Crop)
+                }
+                Button(onClick = onNewGame,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 55.dp),
+                    shape = RoundedCornerShape(17.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Playform.Coral, contentColor = Playform.Ink)) {
+                    androidx.compose.material3.Icon(Icons.Rounded.PlayArrow, contentDescription = null)
+                    Text(if (ar) "العب الآن" else "PLAY NOW", fontSize = 17.sp,
+                        fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 8.dp))
+                }
+                if (state.hasSavedGame) {
+                    OutlinedButton(onClick = onResume, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Playform.White)) {
+                        Text(tx(lang, "resume_game"), fontSize = 13.sp)
+                    }
+                }
             }
         }
-        BoxWithConstraints(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-            val heroSize = min(min(maxWidth.value * 0.70f, maxHeight.value * 0.52f), 230f).dp.coerceAtLeast(80.dp)
-            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                Image(
-                    painter = painterResource(R.drawable.za_snake_mascot),
-                    contentDescription = "Za Snake mascot",
-                    modifier = Modifier.size(heroSize).clip(RoundedCornerShape(28.dp)).border(1.dp, BorderColor, RoundedCornerShape(28.dp)),
-                    contentScale = ContentScale.Crop
-                )
-                Spacer(Modifier.height(14.dp))
-                Text(tx(lang, "ready"), color = PrimaryText, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-                Text(tx(lang, "home_description"), color = Muted, fontSize = 13.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 4.dp))
+        item {
+            PlayformSectionTitle(if (ar) "استكشف اللعبة" else "Explore Za Snake",
+                if (ar) "مكافآتك وشكلك وإنجازاتك في مكان واحد" else "Rewards, style and achievements")
+        }
+        item {
+            // This is a scroll-content action shelf, NOT a fixed bottom navigation bar.
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                PlayformHomeTile(if (ar) "المكافآت" else "Rewards", "🎁",
+                    Playform.PaleCoral, Modifier.weight(1f), onDaily)
+                PlayformHomeTile(if (ar) "التخصيص" else "Style Lab", "🐍",
+                    Playform.PaleLavender, Modifier.weight(1f), onShop)
+                PlayformHomeTile(if (ar) "الإنجازات" else "Achievements", "🏆",
+                    Playform.PaleMint, Modifier.weight(1f), onClaimAchievements)
             }
         }
-        PrimaryActionButton(tx(lang, "new_game"), Icons.Rounded.PlayArrow, onNewGame)
-        if (state.hasSavedGame) {
-            OutlinedActionButton(tx(lang, "resume_game"), Icons.Rounded.Replay, onResume)
-        }
-        PrimaryActionButton(tx(lang, "shop"), Icons.Rounded.ShoppingBag, onShop)
-        OutlinedActionButton(tx(lang, "daily_rewards"), Icons.Rounded.CardGiftcard, onDaily)
-        val claimableCount = ACHIEVEMENTS.count { achievement ->
-            achievement.id !in state.stats.claimedAchievementRewards &&
-                (achievement.id in state.stats.unlockedAchievements ||
-                    achievement.progress(state.stats) >= achievement.target)
-        }
-        if (claimableCount > 0) {
-            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
-                .background(Gold.copy(alpha = .12f))
-                .border(1.dp, Gold.copy(alpha = .55f), RoundedCornerShape(12.dp))
-                .clickable(onClick = onClaimAchievements)
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                androidx.compose.material3.Icon(Icons.Rounded.CardGiftcard, null, tint = Gold, modifier = Modifier.size(20.dp))
-                Text(if (lang == "ar") "استلم المكافآت!" else "Claim your rewards!",
-                    color = PrimaryText, fontSize = 13.sp, fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f))
-                Text(claimableCount.toString(), color = Gold, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+        if (claimableCount > 0) item {
+            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
+                .background(Playform.Gold).clickable(onClick = onClaimAchievements)
+                .padding(horizontal = 14.dp, vertical = 13.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                Text("🎁", fontSize = 22.sp)
+                Text(if (ar) "عندك ${claimableCount} مكافآت جاهزة للاستلام!"
+                    else "${claimableCount} achievement rewards ready!",
+                    modifier = Modifier.weight(1f).padding(horizontal = 9.dp),
+                    color = Playform.Ink, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                androidx.compose.material3.Icon(Icons.Rounded.KeyboardArrowRight,
+                    contentDescription = null, tint = Playform.Ink)
             }
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            SecondaryTile(tx(lang, "stats_achievements"), Icons.Rounded.EmojiEvents, Modifier.weight(1f), onStats)
-            SecondaryTile(tx(lang, "settings"), Icons.Rounded.Settings, Modifier.weight(1f), onSettings)
+        item {
+            CloudStatusLine(state, lang)
         }
-        CloudStatusLine(state, lang)
+        item { Spacer(Modifier.height(8.dp)) }
+    }
+}
+
+@Composable
+private fun PlayformHomeTile(label: String, emoji: String, color: Color, modifier: Modifier, onClick: () -> Unit) {
+    Column(modifier.clip(RoundedCornerShape(20.dp)).background(color)
+        .clickable(onClick = onClick).padding(horizontal = 5.dp, vertical = 14.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(9.dp)) {
+        Text(emoji, fontSize = 28.sp)
+        Text(label, color = Playform.Ink, fontSize = 12.sp, fontWeight = FontWeight.Bold,
+            lineHeight = 16.sp, textAlign = TextAlign.Center, minLines = 2)
     }
 }
 
@@ -1618,37 +1672,57 @@ private fun BodyStylePreview(body: SnakeBodyType, skin: SnakeSkin, headStyle: Sn
 @Composable
 private fun ModeSelectScreen(state: AppUiState, onBack: () -> Unit, onSelect: (GameMode) -> Unit, onStart: () -> Unit) {
     val lang = state.settings.language
-    Column(Modifier.fillMaxSize().background(Bg).padding(16.dp)) {
+    Column(Modifier.fillMaxSize().background(Playform.Cream)
+        .padding(horizontal = 16.dp, vertical = 12.dp)) {
         ScreenHeader(tx(lang, "choose_mode"), onBack)
-        Text(tx(lang, "choose_mode_sub"), color = Muted, fontSize = 14.sp, modifier = Modifier.padding(bottom = 16.dp))
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        PlayformPageIntro(
+            if (lang == "ar") "اختار أسلوب اللعب" else "Choose your mode",
+            if (lang == "ar") "كل وضع له تحدٍ مختلف. القرار ليك!" else "Three ways to play. Your choice."
+        )
+        Spacer(Modifier.height(16.dp))
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(12.dp)) {
             ModeCard(GameMode.CLASSIC, state.selectedMode == GameMode.CLASSIC, lang, onSelect)
             ModeCard(GameMode.TIME_ATTACK, state.selectedMode == GameMode.TIME_ATTACK, lang, onSelect)
             ModeCard(GameMode.ZEN, state.selectedMode == GameMode.ZEN, lang, onSelect)
         }
+        Spacer(Modifier.height(10.dp))
         PrimaryActionButton(state.selectedMode.startLabel(lang), Icons.Rounded.PlayArrow, onStart)
     }
 }
 
 @Composable
 private fun ModeCard(mode: GameMode, selected: Boolean, language: String, onSelect: (GameMode) -> Unit) {
-    val accent = when (mode) { GameMode.CLASSIC -> Neon; GameMode.TIME_ATTACK -> Gold; GameMode.ZEN -> Blue }
-    val icon = when (mode) { GameMode.CLASSIC -> Icons.Rounded.Gamepad; GameMode.TIME_ATTACK -> Icons.Rounded.Timer; GameMode.ZEN -> Icons.Rounded.Spa }
-    Card(
-        modifier = Modifier.fillMaxWidth().clickable { onSelect(mode) }.border(if (selected) 1.5.dp else 1.dp, if (selected) accent else BorderColor, RoundedCornerShape(18.dp)),
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = if (selected) SelectedPanel else Panel)
-    ) {
-        Row(Modifier.padding(15.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(13.dp)) {
-            Box(Modifier.size(52.dp).clip(RoundedCornerShape(14.dp)).background(accent.copy(alpha = 0.13f)), contentAlignment = Alignment.Center) {
-                androidx.compose.material3.Icon(icon, null, tint = accent, modifier = Modifier.size(29.dp))
-            }
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(mode.title(language), color = accent, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                Text(mode.description(language), color = SecondaryText, fontSize = 12.sp, lineHeight = 17.sp)
-            }
-            if (selected) androidx.compose.material3.Icon(Icons.Rounded.CheckCircle, null, tint = accent, modifier = Modifier.size(24.dp))
+    val color = when (mode) {
+        GameMode.CLASSIC -> Playform.PaleCoral
+        GameMode.TIME_ATTACK -> Playform.Gold
+        GameMode.ZEN -> Playform.PaleMint
+    }
+    val icon = when (mode) {
+        GameMode.CLASSIC -> Icons.Rounded.Gamepad
+        GameMode.TIME_ATTACK -> Icons.Rounded.Timer
+        GameMode.ZEN -> Icons.Rounded.Spa
+    }
+    Row(Modifier.fillMaxWidth().heightIn(min = 96.dp)
+        .clip(RoundedCornerShape(22.dp)).background(color)
+        .border(if (selected) 2.dp else 1.dp,
+            if (selected) Playform.Ink else Playform.Border, RoundedCornerShape(22.dp))
+        .clickable { onSelect(mode) }.padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Box(Modifier.size(49.dp).clip(RoundedCornerShape(16.dp))
+            .background(Playform.White.copy(alpha = .8f)), contentAlignment = Alignment.Center) {
+            androidx.compose.material3.Icon(icon, contentDescription = null,
+                tint = Playform.Ink, modifier = Modifier.size(29.dp))
         }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(mode.title(language), color = Playform.Ink, fontWeight = FontWeight.Black, fontSize = 17.sp)
+            Text(mode.description(language), color = Playform.TextSecondary,
+                fontSize = 12.sp, lineHeight = 17.sp)
+        }
+        if (selected) androidx.compose.material3.Icon(Icons.Rounded.CheckCircle,
+            contentDescription = if (language == "ar") "محدد" else "Selected",
+            tint = Playform.Ink, modifier = Modifier.size(23.dp))
     }
 }
 
@@ -2573,7 +2647,7 @@ private fun ScoreItem(label: String, value: String, modifier: Modifier, highligh
 
 @Composable
 private fun GameBoard(engine: com.ahmedzayed.zasnake.game.SnakeEngine, frameVersion: Long, skin: SnakeSkin, headStyle: SnakeHeadStyle, bodyType: SnakeBodyType, cues: List<VisualCue>, modifier: Modifier) {
-    val palette = LocalZaPalette.current
+    val palette = LocalBoardPalette.current
     val motionEnabled = LocalVisualMotionEnabled.current
     Canvas(modifier = modifier.clip(RoundedCornerShape(4.dp)).border(1.dp, palette.boardBorder, RoundedCornerShape(4.dp))) {
         // Capturing the frame marker invalidates the draw closure while the ViewModel ticks.
