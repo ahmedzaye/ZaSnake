@@ -97,7 +97,10 @@ class MainActivity : ComponentActivity() {
         if (olderUser) runCatching { PlayGamesSdk.initialize(this) }
         playGamesBridge = PlayGamesBridge(this, enabled = olderUser)
         // No mobile-ads init, load or ad request in child mode.
-        if (decision.band == AgeBand.ADULT) {
+        // This v4 update does not offer in-app purchases. Only debug builds
+        // may inspect the future Billing staging UI; release never creates
+        // BillingClient, requests Play prices, or resumes purchase flows.
+        if (decision.band == AgeBand.ADULT && BuildConfig.DEBUG) {
             coinPriceCatalog = CoinPriceCatalog(this, checkNotNull(playGamesBridge)) { grants ->
                 gameViewModel.applyVerifiedPurchaseGrants(grants)
             }
