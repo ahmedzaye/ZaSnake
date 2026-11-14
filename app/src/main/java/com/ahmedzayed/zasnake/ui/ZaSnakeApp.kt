@@ -1252,11 +1252,6 @@ private fun ShopScreen(
     var previewTheme by remember(state.settings.theme) {
         mutableStateOf(state.settings.theme.takeUnless { it.isFree } ?: GameTheme.OCEAN)
     }
-    val selectedColor = when (tab) {
-        "skins" -> snakeSkinColors(previewSkin).first()
-        "themes" -> paletteFor(previewTheme).accent
-        else -> Gold
-    }
     var pendingThemeBuy by remember { mutableStateOf<GameTheme?>(null) }
 
     val compactInventory = LocalConfiguration.current.screenWidthDp < 360 ||
@@ -1803,7 +1798,7 @@ private fun SettingsScreen(
     // Intercept system Back only while a settings subpage is open. From the root settings page,
     // the existing app-level BackHandler continues to return to the main menu.
     BackHandler(enabled = selectedCategory != null) {
-        selectedCategory = null
+        selectedCategory = if (selectedCategory == "account_stats") "account" else null
     }
 
     if (selectedCategory == "account_stats") {
