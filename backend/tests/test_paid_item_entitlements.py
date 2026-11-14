@@ -63,9 +63,9 @@ class PaidItemEntitlementTests(unittest.TestCase):
         self.assertEqual(read_paid_item_ids_staging(db, "player"), {"theme_ocean"})
 
     def test_atomic_duplicate_does_not_write_again(self):
-        # Call decorated transaction's underlying function with a fake
-        # transaction to verify write count without any GCP dependency.
-        from paid_item_entitlements import _purchase
+        # Test the separated transaction body with a fake transaction,
+        # without relying on decorator internals or live GCP access.
+        from paid_item_entitlements import _purchase_impl
         transaction = MagicMock()
         ref = MagicMock()
         ref.get.return_value.exists = True
@@ -74,8 +74,7 @@ class PaidItemEntitlementTests(unittest.TestCase):
             "spends": {"item:skin_egypt": 180},
             "revoked": {}
         }
-        underlying = _purchase.__wrapped__
-        result = underlying(transaction, ref, "skin_egypt")
+        result = _purchase_impl(transaction, ref, "skin_egypt")
         self.assertEqual(result["chargedPaidCoins"], 0)
         self.assertTrue(result["alreadyOwnedInPaidWallet"])
         transaction.set.assert_not_called()
