@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [main, feature/playform-ui-overhaul]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
