@@ -80,8 +80,10 @@ class MainActivity : ComponentActivity() {
 
     private fun setupAfterAgeGate(decision: AgeDecision) {
         if (playGamesBridge != null) return
-        // Do not initialize Firebase on children/teens; no Analytics or client Firestore is used.
-        if (decision.band == AgeBand.ADULT) {
+        // Firebase App Check is exclusively used by the disabled paid-billing
+        // gateway. Do not initialize Firebase at all in this no-IAP release.
+        // The Debug staging variant retains the experimental configuration.
+        if (decision.band == AgeBand.ADULT && BuildConfig.DEBUG) {
             runCatching {
                 checkNotNull(FirebaseApp.initializeApp(this)) {
                     "Firebase configuration missing"
