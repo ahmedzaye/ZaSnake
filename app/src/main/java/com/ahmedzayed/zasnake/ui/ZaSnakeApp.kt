@@ -3094,7 +3094,7 @@ private fun SettingsPanel(content: @Composable ColumnScope.() -> Unit) {
 @Composable
 private fun SettingHeading(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        androidx.compose.material3.Icon(icon, null, tint = Neon, modifier = Modifier.size(19.dp))
+        androidx.compose.material3.Icon(icon, null, tint = Playform.CoralText, modifier = Modifier.size(19.dp))
         Text(label, color = PrimaryText, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
     }
 }
