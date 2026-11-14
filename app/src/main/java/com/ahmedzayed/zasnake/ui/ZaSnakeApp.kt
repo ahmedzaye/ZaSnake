@@ -806,8 +806,8 @@ fun ZaSnakeApp(
         androidx.compose.runtime.CompositionLocalProvider(LocalLayoutDirection provides layoutDirection) {
         AlertDialog(
             onDismissRequest = { },
-            title = { Text(if (language == "ar") "وجدنا جولتين مختلفتين" else "Two different rounds found", color = selectedPalette.accent, fontWeight = FontWeight.Bold) },
-            text = { Text(if (language == "ar") "هنحتفظ بإحصائياتك وإنجازاتك، لكن محتاجين نعرف أي جولة تريد استكمالها." else "Your stats and achievements will merge. Choose which round you want to continue.", color = selectedPalette.secondaryText) },
+            title = { Text(if (language == "ar") "وجدنا جولتين مختلفتين" else "Two different rounds found", color = Playform.Ink, fontWeight = FontWeight.Bold) },
+            text = { Text(if (language == "ar") "هنحتفظ بإحصائياتك وإنجازاتك، لكن محتاجين نعرف أي جولة تريد استكمالها." else "Your stats and achievements will merge. Choose which round you want to continue.", color = Playform.TextSecondary) },
             confirmButton = {
                 TextButton(onClick = {
                     val resolution = viewModel.resolveRoundConflict(true)
@@ -816,7 +816,7 @@ fun ZaSnakeApp(
                         if (resolution.fromPgsConflict) playGamesBridge.resolvePendingConflict(resolution.payload, resolution.chooseServerSnapshot, done)
                         else playGamesBridge.saveBundle(resolution.payload, done)
                     }
-                }) { Text(if (language == "ar") "استخدام الجولة السحابية" else "Use cloud round", color = selectedPalette.accent) }
+                }) { Text(if (language == "ar") "استخدام الجولة السحابية" else "Use cloud round", color = Playform.Ink) }
             },
             dismissButton = {
                 TextButton(onClick = {
@@ -826,11 +826,11 @@ fun ZaSnakeApp(
                         if (resolution.fromPgsConflict) playGamesBridge.resolvePendingConflict(resolution.payload, resolution.chooseServerSnapshot, done)
                         else playGamesBridge.saveBundle(resolution.payload, done)
                     }
-                }) { Text(if (language == "ar") "الاحتفاظ بجولة هذا الجهاز" else "Keep this device's round", color = selectedPalette.muted) }
+                }) { Text(if (language == "ar") "الاحتفاظ بجولة هذا الجهاز" else "Keep this device's round", color = Playform.TextSecondary) }
             },
-            containerColor = selectedPalette.panel,
-            titleContentColor = selectedPalette.accent,
-            textContentColor = selectedPalette.primaryText
+            containerColor = Playform.Cream,
+            titleContentColor = Playform.Ink,
+            textContentColor = Playform.Ink
         )
         }
     }
@@ -850,22 +850,22 @@ fun ZaSnakeApp(
         }
         AlertDialog(
             onDismissRequest = viewModel::dismissConfirmation,
-            title = { Text(title, color = selectedPalette.accent, fontWeight = FontWeight.Bold) },
-            text = { Text(message, color = selectedPalette.secondaryText) },
+            title = { Text(title, color = Playform.Ink, fontWeight = FontWeight.Bold) },
+            text = { Text(message, color = Playform.TextSecondary) },
             confirmButton = {
                 TextButton(onClick = {
                     if (pending == ConfirmationAction.EXIT_APP) {
                         viewModel.dismissConfirmation()
                         onExitApp()
                     } else viewModel.confirmPendingAction()
-                }) { Text(tx(language, "confirm"), color = selectedPalette.accent) }
+                }) { Text(tx(language, "confirm"), color = Playform.Ink) }
             },
             dismissButton = {
-                TextButton(onClick = viewModel::dismissConfirmation) { Text(tx(language, "cancel"), color = selectedPalette.muted) }
+                TextButton(onClick = viewModel::dismissConfirmation) { Text(tx(language, "cancel"), color = Playform.TextSecondary) }
             },
-            containerColor = selectedPalette.panel,
-            titleContentColor = selectedPalette.accent,
-            textContentColor = selectedPalette.primaryText
+            containerColor = Playform.Cream,
+            titleContentColor = Playform.Ink,
+            textContentColor = Playform.Ink
         )
         }
     }
