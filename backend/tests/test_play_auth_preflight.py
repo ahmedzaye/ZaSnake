@@ -2,7 +2,7 @@
 import unittest
 from unittest.mock import MagicMock
 
-from play_auth_preflight import probe
+from play_auth_preflight import probe, _play_401_exit
 
 
 class PlayAuthPreflightTests(unittest.TestCase):
@@ -41,6 +41,36 @@ class PlayAuthPreflightTests(unittest.TestCase):
                 self.assertEqual(kwargs["params"]["type"], "0")
                 self.assertEqual(kwargs["timeout"], 15)
                 self.assertFalse(kwargs["allow_redirects"])
+
+    def test_401_reasons_without_disclosing_response_contents(self):
+        cases = [
+            ({"error": {"errors": [{"domain": "androidpublisher",
+                                     "reason": "permissionDenied",
+                                     "message": "purchaseToken=SECRET"}]}}, 28),
+            ({"error": {"errors": [{"reason": "authError"}]}}, 29),
+            ({"error": {"errors": [{"reason": "invalidCredentials"}]}}, 29),
+            ({"error": {"errors": [{"reason": "insufficientPermissions"}]}}, 30),
+            ({"error": {"status": "UNAUTHENTICATED"}}, 31),
+            ({"error": {"errors": [{"reason": "sensitive-secret"}]}}, 23),
+            ({"error": "sensitive-secret"}, 23),
+        ]
+        for payload, expected in cases:
+            with self.subTest(expected=expected):
+                response = MagicMock(status_code=401)
+                response.json.return_value = payload
+                self.assertEqual(_play_401_exit(response), expected)
+                credential = MagicMock()
+                session = MagicMock()
+                session.get.return_value = response
+                self.assertEqual(probe(now_ms=1_800_000_000_000,
+                    auth_default=lambda **_: (credential, "zasnake"),
+                    request_factory=MagicMock(),
+                    session_factory=lambda _: session), expected)
+
+    def test_401_invalid_json_uses_unclassified_status(self):
+        response = MagicMock(status_code=401)
+        response.json.side_effect = ValueError("do not log this")
+        self.assertEqual(_play_401_exit(response), 23)
 
     def test_network_failure(self):
         credential = MagicMock()
