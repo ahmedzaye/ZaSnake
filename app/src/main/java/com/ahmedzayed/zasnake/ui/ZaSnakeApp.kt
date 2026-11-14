@@ -1107,7 +1107,11 @@ private fun ShopScreen(
             horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             ChoiceChip(tx(lang, "shop_skins"), tab == "skins") { tab = "skins" }
             ChoiceChip(tx(lang, "shop_themes"), tab == "themes") { tab = "themes" }
-            ChoiceChip(tx(lang, "shop_coins"), tab == "coins") { tab = "coins" }
+            // No paid coin packs in v4 release. Debug keeps staging price UI
+            // for developer testing, while skins/themes remain free-coin shops.
+            if (com.ahmedzayed.zasnake.BuildConfig.DEBUG) {
+                ChoiceChip(tx(lang, "shop_coins"), tab == "coins") { tab = "coins" }
+            }
         }
         Spacer(Modifier.height(8.dp))
         // This preview and balance stay pinned while only the inventory scrolls.
