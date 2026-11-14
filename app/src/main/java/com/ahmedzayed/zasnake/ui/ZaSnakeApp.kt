@@ -1010,14 +1010,16 @@ private fun DailyRewardsScreen(
     onRefresh: () -> Unit
 ) {
     val lang = state.settings.language
+    val ar = lang == "ar"
     val date = state.dailyDate
     val stats = state.stats
     val progress = stats.dailyProgress(date)
     val clockIsValid = date >= stats.latestDailyDate
     val loginClaimed = date in stats.claimedDailyLogins
-    val nextDay = if (loginClaimed) stats.claimedDailyLogins[date] ?: 1 else stats.nextDailyLoginDay(date)
+    val nextDay = if (loginClaimed) stats.claimedDailyLogins[date] ?: 1
+        else stats.nextDailyLoginDay(date)
     val currentCoins = DAILY_LOGIN_COIN_SEQUENCE[(nextDay - 1).coerceIn(0, 6)]
-    // Periodic date rollover, including when the daily screen is left open at midnight UTC.
+    // Same UTC rollover and reward eligibility as the original screen.
     LaunchedEffect(date) {
         while (true) {
             kotlinx.coroutines.delay(30_000)
@@ -1025,94 +1027,128 @@ private fun DailyRewardsScreen(
         }
     }
     LazyColumn(
-        Modifier.fillMaxSize().background(Bg).padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        Modifier.fillMaxSize().background(Playform.Cream)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(13.dp)
     ) {
         item { ScreenHeader(tx(lang, "daily_rewards"), onBack) }
         item {
-            Card(colors = CardDefaults.cardColors(containerColor = SelectedPanel), shape = RoundedCornerShape(14.dp)) {
-                Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                    Text("🎁 ${tx(lang, "daily_login")}", color = Neon, fontWeight = FontWeight.Bold, fontSize = 17.sp)
-                    Text(tx(lang, "daily_login_hint"), color = Muted, fontSize = 11.sp)
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        DAILY_LOGIN_COIN_SEQUENCE.forEachIndexed { index, amount ->
-                            val day = index + 1
-                            val chosen = day == nextDay
-                            Column(
-                                modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp))
-                                    .background(if (chosen) Neon.copy(alpha = 0.15f) else Panel)
-                                    .border(1.dp, if (chosen) Neon else BorderColor, RoundedCornerShape(8.dp))
-                                    .padding(vertical = 7.dp, horizontal = 1.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(3.dp)
-                            ) {
-                                Text("${tx(lang, "daily_day")} $day", color = Muted, fontSize = 8.sp, maxLines = 1)
-                                Text("🪙$amount", color = if (chosen) Gold else PrimaryText, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                            }
-                        }
+            PlayformPageIntro(if (ar) "مكافآتك اليومية" else "Daily Rewards",
+                if (ar) "كل يوم فرصة جديدة لتجمع مكافآت أكثر"
+                else "A new chance to earn rewards every day")
+        }
+        item {
+            PlayformDarkCard {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        PlayformTag("DAILY LOGIN")
+                        Text(tx(lang, "daily_login"), color = Playform.White,
+                            fontWeight = FontWeight.Black, fontSize = 20.sp)
+                        Text(tx(lang, "daily_login_hint"),
+                            color = Playform.LightOnDark, fontSize = 13.sp, lineHeight = 19.sp)
                     }
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("$date · +$currentCoins 🪙", color = Gold, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                        if (loginClaimed) {
-                            Text(tx(lang, "daily_claimed"), color = Neon, fontSize = 12.sp)
-                        } else {
-                            Button(onClick = { onClaimLogin() }, enabled = clockIsValid, colors = ButtonDefaults.buttonColors(containerColor = Neon, contentColor = ButtonText),
-                                modifier = Modifier.height(34.dp), contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)) {
-                                Text(tx(lang, "claim_short"), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                            }
+                    Text("🎁", fontSize = 46.sp)
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    DAILY_LOGIN_COIN_SEQUENCE.forEachIndexed { index, coins ->
+                        val day = index + 1
+                        val current = day == nextDay
+                        Column(Modifier.weight(1f).clip(RoundedCornerShape(10.dp))
+                            .background(if (current) Playform.Gold else Color(0xFF45415E))
+                            .padding(vertical = 10.dp, horizontal = 1.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                            Text("D$day", color = if (current) Playform.Ink else Playform.LightOnDark,
+                                fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                            Text("$coins", color = if (current) Playform.Ink else Playform.White,
+                                fontWeight = FontWeight.Black, fontSize = 12.sp)
                         }
                     }
                 }
+                if (loginClaimed) {
+                    PlayformStatusPill(tx(lang, "daily_claimed"),
+                        color = Playform.Ink, background = Playform.Gold)
+                } else {
+                    Button(
+                        onClick = { onClaimLogin() },
+                        enabled = clockIsValid,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
+                        shape = RoundedCornerShape(15.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Playform.Coral,
+                            contentColor = Playform.Ink)
+                    ) {
+                        Text(if (ar) "استلم $currentCoins عملة" else "CLAIM $currentCoins COINS",
+                            fontWeight = FontWeight.Black, fontSize = 15.sp)
+                    }
+                }
+                Text(date, color = Playform.LightOnDark, fontSize = 12.sp)
             }
         }
-        if (!clockIsValid) {
-            item { Text(tx(lang, "daily_clock_warning"), color = Gold, fontSize = 12.sp) }
+        if (!clockIsValid) item {
+            PlayformCard(background = Color(0xFFFFF0D2)) {
+                Text(tx(lang, "daily_clock_warning"), color = Playform.Ink,
+                    fontSize = 13.sp, lineHeight = 19.sp)
+            }
         }
         item {
-            Text("🎯 ${tx(lang, "daily_challenges")}", color = Neon, fontWeight = FontWeight.Bold, fontSize = 17.sp)
-            Text("${tx(lang, "daily_max")}: ${DailyChallenge.entries.sumOf { it.coins }} 🪙", color = Gold, fontSize = 11.sp)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    PlayformSectionTitle(tx(lang, "daily_challenges"),
+                        if (ar) "أنجز التحديات واستلم مكافآتك" else "Complete missions to collect coins")
+                }
+                PlayformStatusPill("🪙 ${DailyChallenge.entries.sumOf { it.coins }}",
+                    color = Playform.Ink, background = Playform.Gold)
+            }
         }
         items(DailyChallenge.entries.toList(), key = { it.id }) { challenge ->
             val current = challenge.progress(progress).coerceAtLeast(0L)
             val finished = current >= challenge.target
             val claimed = challenge.claimId(date) in stats.claimedDailyChallenges
             val ratio = (current.toFloat() / challenge.target.toFloat()).coerceIn(0f, 1f)
-            Card(colors = CardDefaults.cardColors(containerColor = if (finished) SelectedPanel else Panel),
-                shape = RoundedCornerShape(11.dp), modifier = Modifier.fillMaxWidth()) {
-                Row(Modifier.fillMaxWidth().heightIn(min = 72.dp).padding(9.dp),
-                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(challenge.icon, fontSize = 24.sp)
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(if (lang == "ar") challenge.arName else challenge.enName, color = PrimaryText,
-                            fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(if (lang == "ar") challenge.arDescription else challenge.enDescription,
-                            color = Muted, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            LinearProgressIndicator(progress = { ratio }, modifier = Modifier.weight(1f).height(4.dp).clip(CircleShape),
-                                color = Neon, trackColor = BorderColor)
-                            Text("${current.coerceAtMost(challenge.target)}/${challenge.target}", color = Muted, fontSize = 10.sp)
-                        }
+            PlayformCard(background = if (finished) Color(0xFFFFFDF6) else Playform.White) {
+                Row(verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Box(Modifier.size(46.dp).clip(RoundedCornerShape(14.dp))
+                        .background(Playform.PaleCoral), contentAlignment = Alignment.Center) {
+                        Text(challenge.icon, fontSize = 24.sp)
                     }
-                    Column(Modifier.width(77.dp), horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text("🪙 ${challenge.coins}", color = Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                        Text(if (ar) challenge.arName else challenge.enName,
+                            color = Playform.Ink, fontWeight = FontWeight.Black, fontSize = 15.sp)
+                        Text(if (ar) challenge.arDescription else challenge.enDescription,
+                            color = Playform.TextSecondary, fontSize = 12.sp, lineHeight = 17.sp)
+                        PlayformProgressBar(ratio)
+                        Text("${current.coerceAtMost(challenge.target)} / ${challenge.target}",
+                            color = Playform.TextSecondary, fontSize = 12.sp)
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                        Text("🪙 ${challenge.coins}", color = Playform.GoldText,
+                            fontWeight = FontWeight.Black, fontSize = 12.sp)
                         when {
-                            claimed -> Text(tx(lang, "claimed_short"), color = Neon, fontSize = 10.sp)
-                            finished -> Button(onClick = { onClaimChallenge(challenge.id) }, enabled = clockIsValid,
-                                modifier = Modifier.fillMaxWidth().height(30.dp),
-                                contentPadding = PaddingValues(horizontal = 2.dp, vertical = 0.dp),
-                                shape = RoundedCornerShape(8.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Neon, contentColor = ButtonText)) {
-                                Text(tx(lang, "claim_short"), fontSize = 11.sp, maxLines = 1)
-                            }
-                            else -> Text(tx(lang, "reward_pending"), color = Muted, fontSize = 10.sp)
+                            claimed -> PlayformStatusPill(tx(lang, "claimed_short"),
+                                color = Color(0xFF286C5B), background = Playform.PaleMint)
+                            finished -> Button(
+                                onClick = { onClaimChallenge(challenge.id) },
+                                enabled = clockIsValid,
+                                modifier = Modifier.heightIn(min = 44.dp),
+                                contentPadding = PaddingValues(horizontal = 11.dp),
+                                shape = RoundedCornerShape(11.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Playform.Coral, contentColor = Playform.Ink)
+                            ) { Text(tx(lang, "claim_short"), fontSize = 12.sp) }
+                            else -> Text(tx(lang, "reward_pending"), color = Playform.TextSecondary,
+                                fontSize = 11.sp)
                         }
                     }
                 }
             }
         }
-        item { Text(tx(lang, "daily_reset"), color = Muted, fontSize = 11.sp, modifier = Modifier.padding(bottom = 12.dp)) }
+        item {
+            Text(tx(lang, "daily_reset"), color = Playform.TextSecondary,
+                fontSize = 12.sp, modifier = Modifier.fillMaxWidth()
+                    .padding(vertical = 8.dp), textAlign = TextAlign.Center)
+        }
     }
 }
 
