@@ -17,7 +17,7 @@ import requests
 
 from policy import (
     ALLOWED_ROUTES, MAX_REQUEST_BYTES, private_service_url,
-    route_allowed, valid_app_id,
+    allowed_in_mode, valid_app_id,
 )
 
 app = Flask(__name__)
@@ -29,6 +29,8 @@ log = logging.getLogger(__name__)
 ENABLED = os.environ.get("GATEWAY_ENABLED", "false").lower() == "true"
 EXPECTED_APP_ID = os.environ.get("EXPECTED_FIREBASE_APP_ID", "")
 PRIVATE_URL = os.environ.get("BILLING_PRIVATE_URL", "")
+# Tagged revision only: permits POST /session, never payment or grants.
+SESSION_PROBE_ONLY = os.environ.get("SESSION_PROBE_ONLY", "false").lower() == "true"
 
 
 @app.get("/health")
@@ -40,9 +42,11 @@ def health():
 @app.route("/<path:route>", methods=["GET", "POST"])
 def forward(route):
     path = "/" + route
-    if not ENABLED:
+    if SESSION_PROBE_ONLY and ENABLED:
+        return jsonify({"error": "unsafe_gateway_configuration"}), 503
+    if not ENABLED and not SESSION_PROBE_ONLY:
         return jsonify({"error": "gateway_disabled"}), 503
-    if not route_allowed(request.method, path):
+    if not allowed_in_mode(request.method, path, ENABLED, SESSION_PROBE_ONLY):
         return jsonify({"error": "not_found"}), 404
     if not EXPECTED_APP_ID.startswith("1:"):
         return jsonify({"error": "gateway_unconfigured"}), 503
