@@ -36,7 +36,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import android.provider.Settings
 import com.ahmedzayed.zasnake.R
 import com.ahmedzayed.zasnake.game.ACHIEVEMENTS
 import com.ahmedzayed.zasnake.game.AppUiState
