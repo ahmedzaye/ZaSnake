@@ -146,11 +146,11 @@ internal fun SettingsScreen(
     // Intercept system Back only while a settings subpage is open. From the root settings page,
     // the existing app-level BackHandler continues to return to the main menu.
     BackHandler(enabled = selectedCategory != null) {
-        selectedCategory = if (selectedCategory == "account_stats") "account" else null
+        selectedCategory = null
     }
 
     if (selectedCategory == "account_stats") {
-        StatisticsScreen(state, onBack = { selectedCategory = "account" },
+        StatisticsScreen(state, onBack = { selectedCategory = null },
             onClaimReward = { false }, achievementsOnly = false)
     } else if (selectedCategory == null) {
         LazyColumn(
