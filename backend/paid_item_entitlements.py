@@ -97,3 +97,21 @@ def read_paid_item_ids_staging(db, authenticated_player_id: str) -> set[str]:
     snapshot = wallet_ref.get()
     state = _state_from_document(snapshot.to_dict() if snapshot.exists else None)
     return _purchased_paid_item_ids(state)
+
+
+def paid_item_wallet_snapshot_staging(db, authenticated_player_id: str) -> dict:
+    """One server-only read; no device-supplied balances or purchase receipts.
+
+    A negative balance after a late refund is debt. The spendable balance is
+    clamped to zero, but the debt is retained in the server ledger.
+    """
+    wallet_ref = db.collection("paid_wallets_v1").document(
+        _player_key(authenticated_player_id)
+    )
+    snapshot = wallet_ref.get()
+    state = _state_from_document(snapshot.to_dict() if snapshot.exists else None)
+    owned = _purchased_paid_item_ids(state)
+    return {
+        "spendablePaidCoins": max(0, state.balance),
+        "ownedPaidItemIds": sorted(owned),
+    }
