@@ -1119,23 +1119,27 @@ private fun DailyRewardsScreen(
                         .background(Playform.PaleCoral), contentAlignment = Alignment.Center) {
                         Text(challenge.icon, fontSize = 24.sp)
                     }
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                        Text(if (ar) challenge.arName else challenge.enName,
-                            color = Playform.Ink, fontWeight = FontWeight.Black, fontSize = 15.sp)
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(if (ar) challenge.arDescription else challenge.enDescription,
-                            color = Playform.TextSecondary, fontSize = 12.sp, lineHeight = 17.sp)
+                            color = Playform.Ink, fontWeight = FontWeight.SemiBold,
+                            fontSize = 14.sp, lineHeight = 20.sp)
                         PlayformProgressBar(ratio)
-                        Text("${current.coerceAtMost(challenge.target)} / ${challenge.target}",
-                            color = Playform.TextSecondary, fontSize = 12.sp)
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(7.dp)) {
                         Text("🪙 ${challenge.coins}", color = Playform.GoldText,
                             fontWeight = FontWeight.Black, fontSize = 12.sp)
-                        when {
-                            claimed -> PlayformStatusPill(tx(lang, "claimed_short"),
-                                color = Color(0xFF286C5B), background = Playform.PaleMint)
-                            finished -> Button(
+                        androidx.compose.runtime.CompositionLocalProvider(
+                            LocalLayoutDirection provides LayoutDirection.Ltr
+                        ) {
+                            Text("${current.coerceAtMost(challenge.target)}/${challenge.target}",
+                                color = Playform.TextSecondary, fontSize = 12.sp)
+                        }
+                        if (claimed) {
+                            Text("✓", color = Color(0xFF286C5B),
+                                fontWeight = FontWeight.Black, fontSize = 15.sp)
+                        } else if (finished) {
+                            Button(
                                 onClick = { onClaimChallenge(challenge.id) },
                                 enabled = clockIsValid,
                                 modifier = Modifier.heightIn(min = 44.dp),
@@ -1144,8 +1148,6 @@ private fun DailyRewardsScreen(
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = Playform.Coral, contentColor = Playform.Ink)
                             ) { Text(tx(lang, "claim_short"), fontSize = 12.sp) }
-                            else -> Text(tx(lang, "reward_pending"), color = Playform.TextSecondary,
-                                fontSize = 11.sp)
                         }
                     }
                 }
@@ -1218,11 +1220,6 @@ private fun StyleLabItemCard(
                 owned -> if (ar) "تجهيز" else "Equip"
                 else -> if (ar) "شراء" else "Buy"
             }, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-        }
-        if (!owned && balance < price) {
-            Text(if (ar) "ناقصك ${price - balance} عملة"
-                else "${price - balance} more coins needed",
-                color = Playform.TextSecondary, fontSize = 11.sp, lineHeight = 15.sp)
         }
     }
 }
@@ -2448,24 +2445,27 @@ private fun StatisticsScreen(
                             contentAlignment = Alignment.Center) {
                             Text(if (unlocked) achievement.icon else "🔒", fontSize = 23.sp)
                         }
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                            Text(if (ar) achievement.arName else achievement.enName,
-                                color = Playform.Ink, fontSize = 14.sp, fontWeight = FontWeight.Black)
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text(if (ar) achievement.arDescription else achievement.enDescription,
-                                color = Playform.TextSecondary, fontSize = 12.sp,
-                                lineHeight = 17.sp)
+                                color = Playform.Ink, fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold, lineHeight = 20.sp)
                             PlayformProgressBar(ratio,
                                 color = if (unlocked) Playform.GoldText else Playform.Lavender)
-                            Text(progressText, color = Playform.TextSecondary, fontSize = 12.sp)
                         }
                         Column(horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            verticalArrangement = Arrangement.spacedBy(7.dp)) {
                             Text("🪙 ${achievement.rewardCoins}", color = Playform.GoldText,
                                 fontWeight = FontWeight.Black, fontSize = 12.sp)
-                            when {
-                                claimed -> PlayformStatusPill(tx(lang, "claimed_short"),
-                                    color = Color(0xFF286C5B), background = Playform.PaleMint)
-                                unlocked -> Button(
+                            androidx.compose.runtime.CompositionLocalProvider(
+                                LocalLayoutDirection provides LayoutDirection.Ltr
+                            ) {
+                                Text(progressText, color = Playform.TextSecondary, fontSize = 12.sp)
+                            }
+                            if (claimed) {
+                                Text("✓", color = Color(0xFF286C5B),
+                                    fontWeight = FontWeight.Black, fontSize = 15.sp)
+                            } else if (unlocked) {
+                                Button(
                                     onClick = { onClaimReward(achievement.id) },
                                     modifier = Modifier.heightIn(min = 44.dp),
                                     contentPadding = PaddingValues(horizontal = 11.dp),
@@ -2473,8 +2473,6 @@ private fun StatisticsScreen(
                                     colors = ButtonDefaults.buttonColors(
                                         containerColor = Playform.Coral, contentColor = Playform.Ink)
                                 ) { Text(tx(lang, "claim_short"), fontSize = 12.sp) }
-                                else -> Text(tx(lang, "reward_pending"),
-                                    color = Playform.TextSecondary, fontSize = 11.sp)
                             }
                         }
                     }
