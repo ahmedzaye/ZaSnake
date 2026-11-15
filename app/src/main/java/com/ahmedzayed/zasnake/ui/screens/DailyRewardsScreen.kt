@@ -169,15 +169,11 @@ internal fun DailyRewardsScreen(
                                 tint = Color(0xFF286C5B),
                                 modifier = Modifier.size(24.dp)
                             )
-                            finished -> Button(
-                                onClick = { onClaimChallenge(challenge.id) },
+                            finished -> RewardClaimButton(
+                                label = tx(lang, "claim_short"),
                                 enabled = clockIsValid,
-                                modifier = Modifier.heightIn(min = 44.dp),
-                                contentPadding = PaddingValues(horizontal = 11.dp),
-                                shape = RoundedCornerShape(11.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = Playform.Coral, contentColor = Playform.Ink)
-                            ) { Text(tx(lang, "claim_short"), fontSize = 12.sp) }
+                                onClick = { onClaimChallenge(challenge.id) }
+                            )
                             else -> androidx.compose.runtime.CompositionLocalProvider(
                                 LocalLayoutDirection provides LayoutDirection.Ltr
                             ) {
