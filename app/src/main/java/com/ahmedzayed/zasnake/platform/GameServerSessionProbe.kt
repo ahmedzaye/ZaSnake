@@ -19,9 +19,16 @@ object GameServerSessionProbe {
         if (!BuildConfig.DEBUG) return null
         val parsed = runCatching { URI(BuildConfig.PGS_AUTH_PROBE_URL.trim()) }.getOrNull()
             ?: return null
-        if (parsed.scheme != "https" || parsed.host?.endsWith(".run.app") != true ||
-            parsed.port != -1 || parsed.rawUserInfo != null || parsed.rawQuery != null ||
+        if (parsed.rawUserInfo != null || parsed.rawQuery != null ||
             parsed.rawFragment != null || parsed.rawPath !in listOf(null, "", "/")) return null
+        // Local ADB reverse -> developer's authenticated Cloud Run proxy.
+        // HTTP is permitted only to this exact loopback address + port in Debug.
+        if (parsed.scheme == "http") {
+            if (parsed.host != "127.0.0.1" || parsed.port != 8765) return null
+            return runCatching { URL("http://127.0.0.1:8765/session") }.getOrNull()
+        }
+        if (parsed.scheme != "https" || parsed.host?.endsWith(".run.app") != true ||
+            parsed.port != -1) return null
         return runCatching { URL("https://${parsed.host}/session") }.getOrNull()
     }
 
