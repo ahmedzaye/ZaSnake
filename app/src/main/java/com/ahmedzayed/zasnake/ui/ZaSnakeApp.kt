@@ -4,6 +4,7 @@ import com.ahmedzayed.zasnake.ads.RewardedAds
 import com.ahmedzayed.zasnake.ads.RewardPlacement
 import com.ahmedzayed.zasnake.billing.CoinPriceCatalog
 import com.ahmedzayed.zasnake.BuildConfig
+import com.ahmedzayed.zasnake.platform.GameServerSessionProbe
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
@@ -426,6 +427,12 @@ fun ZaSnakeApp(
                                                     onResult(!code.isNullOrBlank())
                                                 }
                                             }
+                                        }
+                                    } else null,
+                                    onTestGameServerExchange = if (BuildConfig.DEBUG &&
+                                        coinPriceCatalog != null && activity != null) {
+                                        { onResult: (String) -> Unit ->
+                                            GameServerSessionProbe.run(activity, playGamesBridge, onResult)
                                         }
                                     } else null)
                                 AppScreen.STATISTICS -> StatisticsScreen(state, onBack = viewModel::navigateHomeFromSubscreen,
