@@ -5,7 +5,7 @@ COPY requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 COPY main.py ./main.py
 COPY purchase_validation.py ./purchase_validation.py
-COPY wallet_rules.py wallet_repository.py atomic_wallet_settlement.py ./
+COPY wallet_rules.py wallet_repository.py atomic_wallet_settlement.py paid_item_entitlements.py ./
 # The same source image can be used for a separately configured, *manual*
 # Cloud Run Job by overriding command/args. No scheduler is configured.
 COPY play_refund_events.py voided_reconciliation.py reconcile_dry_run.py play_auth_preflight.py ./
