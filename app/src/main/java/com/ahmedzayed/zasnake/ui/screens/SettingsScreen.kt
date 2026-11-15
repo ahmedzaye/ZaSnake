@@ -107,7 +107,8 @@ internal fun SettingsScreen(
     playGamesAllowed: Boolean,
     playGamesConfigured: Boolean,
     onRequestPlayGamesSignIn: () -> Unit,
-    onTestGameServerAuth: (((Boolean) -> Unit) -> Unit)?
+    onTestGameServerAuth: (((Boolean) -> Unit) -> Unit)?,
+    onTestGameServerExchange: (((String) -> Unit) -> Unit)?
 ) {
     val lang = state.settings.language
     val settings = state.settings
@@ -120,6 +121,8 @@ internal fun SettingsScreen(
     // Debug-only result: never keep a server auth code in Compose state.
     var serverAuthTestRunning by remember { mutableStateOf(false) }
     var serverAuthTestResult by remember { mutableStateOf<Boolean?>(null) }
+    var serverExchangeRunning by remember { mutableStateOf(false) }
+    var serverExchangeResult by remember { mutableStateOf<String?>(null) }
 
     if (editingPlayerName) {
         AlertDialog(
@@ -318,6 +321,59 @@ internal fun SettingsScreen(
                                     },
                                     color = Muted, fontSize = 12.sp, lineHeight = 17.sp
                                 )
+                                if (onTestGameServerExchange != null) {
+                                    OutlinedButton(
+                                        onClick = {
+                                            serverExchangeRunning = true
+                                            serverExchangeResult = null
+                                            onTestGameServerExchange { result ->
+                                                serverExchangeRunning = false
+                                                serverExchangeResult = result
+                                            }
+                                        },
+                                        enabled = playGamesConfigured && webClientConfigured &&
+                                            !serverExchangeRunning &&
+                                            BuildConfig.PGS_AUTH_PROBE_URL.isNotBlank()
+                                    ) {
+                                        Text(if (lang == "ar") "اختبار جلسة Backend"
+                                             else "Test Backend session (Debug)")
+                                    }
+                                    val exchangeMessage = when {
+                                        BuildConfig.PGS_AUTH_PROBE_URL.isBlank() ->
+                                            if (lang == "ar") "لم يُحدد pgsAuthProbeUrl بعد؛ اختبار الخادم معطّل."
+                                            else "Set pgsAuthProbeUrl to enable this test."
+                                        serverExchangeRunning ->
+                                            if (lang == "ar") "جارٍ فحص App Check ومصادقة اللاعب مع Backend..."
+                                            else "Checking App Check and authenticating with Backend..."
+                                        serverExchangeResult == "OK" ->
+                                            if (lang == "ar") "نجح: تحقّق Backend من اللاعب وأنشأ جلسة مؤقتة. لم تُحفظ."
+                                            else "Success: backend verified player and created a temporary session; not stored."
+                                        serverExchangeResult == "APP_CHECK" ||
+                                            serverExchangeResult == "APP_CHECK_REJECTED" ->
+                                            if (lang == "ar") "فشل App Check: راجع تسجيل رمز المحاكي التجريبي في Firebase."
+                                            else "App Check failed: register the emulator debug token in Firebase."
+                                        serverExchangeResult == "AUTH_CODE" ->
+                                            if (lang == "ar") "تعذّر إصدار رمز Play Games جديد."
+                                            else "Play Games could not issue a fresh auth code."
+                                        serverExchangeResult == "GAMES_AUTH" ->
+                                            if (lang == "ar") "رفض Backend رمز Play Games. راجع إعداد OAuth."
+                                            else "Backend rejected Play Games auth. Review server OAuth configuration."
+                                        serverExchangeResult == "GATEWAY_DISABLED" ->
+                                            if (lang == "ar") "مسار الاختبار على Gateway غير مفعّل."
+                                            else "Gateway session probe is not enabled."
+                                        serverExchangeResult == "BAD_RESPONSE" ->
+                                            if (lang == "ar") "Backend لم يُرجع جلسة صالحة."
+                                            else "Backend returned an invalid session response."
+                                        serverExchangeResult != null ->
+                                            if (lang == "ar") "فشل الاتصال بالخادم أو أكمل الطلب بخطأ."
+                                            else "Server exchange failed."
+                                        else ->
+                                            if (lang == "ar") "رمز مؤقت جديد؛ لا يوجد شراء أو تخزين للجلسة."
+                                            else "Fresh one-time auth code; no purchases or session storage."
+                                    }
+                                    Text(exchangeMessage, color = Muted,
+                                        fontSize = 12.sp, lineHeight = 17.sp)
+                                }
                             }
                             HorizontalDivider(color = DividerColor)
                             SettingHeading(tx(lang, "cloud_sync_title"), Icons.Rounded.CloudOff)
