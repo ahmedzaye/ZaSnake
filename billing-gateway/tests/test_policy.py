@@ -1,6 +1,6 @@
 import unittest
 
-from policy import private_service_url, route_allowed, valid_app_id
+from policy import allowed_in_mode, private_service_url, route_allowed, valid_app_id
 
 
 class PolicyTests(unittest.TestCase):
@@ -29,6 +29,16 @@ class PolicyTests(unittest.TestCase):
                              ("POST", "/grants"), ("GET", "/admin"),
                              ("POST", "/claim/extra"), ("DELETE", "/session")):
             self.assertFalse(route_allowed(method, path))
+
+    def test_session_probe_blocks_billing(self):
+        self.assertTrue(allowed_in_mode("POST", "/session", False, True))
+        for method, path in (("POST", "/claim"), ("GET", "/grants"),
+                             ("GET", "/session"), ("POST", "/admin")):
+            self.assertFalse(allowed_in_mode(method, path, False, True))
+        self.assertFalse(allowed_in_mode("POST", "/session", True, True))
+        self.assertFalse(allowed_in_mode("POST", "/claim", True, True))
+        self.assertFalse(allowed_in_mode("POST", "/session", False, False))
+        self.assertTrue(allowed_in_mode("POST", "/session", True, False))
 
     def test_app_identity(self):
         appid = "1:914975720790:android:abcd1234"
