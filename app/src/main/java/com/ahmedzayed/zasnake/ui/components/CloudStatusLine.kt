@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ahmedzayed.zasnake.game.AppUiState
 
+@Composable
 internal fun CloudStatusLine(state: AppUiState, language: String) {
     val configuredConnection = state.cloudStatus in listOf("connected", "sync_error", "synced")
     Row(Modifier.fillMaxWidth().padding(top = 1.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
