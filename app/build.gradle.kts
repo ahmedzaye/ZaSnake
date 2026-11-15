@@ -29,6 +29,8 @@ android {
     // Gateway URL is intentionally empty until the separate App Check protected
     // mobile-facing service has been deployed and independently tested.
     val billingGatewayUrl = providers.gradleProperty("billingGatewayUrl").orElse("").get()
+    // Independent Debug-only auth probe; never used by checkout.
+    val pgsAuthProbeUrl = providers.gradleProperty("pgsAuthProbeUrl").orElse("").get()
     val billingIntegrationEnabled = providers.gradleProperty("billingIntegrationEnabled")
         .orElse("false").get().equals("true", ignoreCase = true)
     defaultConfig {
@@ -37,6 +39,7 @@ android {
             "\"$billingGatewayUrl\"")
         buildConfigField("boolean", "BILLING_INTEGRATION_ENABLED",
             billingIntegrationEnabled.toString())
+        buildConfigField("String", "PGS_AUTH_PROBE_URL", "\"$pgsAuthProbeUrl\"")
     }
 
     compileOptions {
