@@ -195,15 +195,14 @@ internal fun SettingsScreen(
                 )
             }
             item {
-                PlayformDarkCard {
-                    PlayformTag("YOUR SPACE")
-                    Text(if (lang == "ar") "ظبّط اللعبة على مزاجك" else "Make the game yours",
-                        color = Playform.White, fontWeight = FontWeight.Black, fontSize = 18.sp)
-                    Text(if (lang == "ar")
-                        "اختياراتك الحالية تفضل محفوظة، والثيمات المملوكة تفضل متاحة."
-                        else "Your preferences and unlocked looks stay available.",
-                        color = Playform.LightOnDark, fontSize = 13.sp, lineHeight = 19.sp)
-                }
+                SettingsCategoryCard(
+                    title = tx(lang, "statistics"),
+                    description = if (lang == "ar") "نتائجك ومبارياتك ووقت اللعب"
+                    else "Scores, games and total playtime",
+                    icon = Icons.Rounded.BarChart,
+                    accent = Playform.Lavender,
+                    onClick = { selectedCategory = "account_stats" }
+                )
             }
             item { Spacer(Modifier.height(8.dp)) }
         }
@@ -215,16 +214,6 @@ internal fun SettingsScreen(
             item { ScreenHeader(tx(lang, selectedCategory!!), onBack = { selectedCategory = null }) }
             when (selectedCategory) {
                 "account" -> {
-                    item {
-                        SettingsCategoryCard(
-                            title = tx(lang, "statistics"),
-                            description = if (lang == "ar") "نتائجك ومبارياتك ووقت اللعب"
-                                else "Scores, games and total playtime",
-                            icon = Icons.Rounded.BarChart,
-                            accent = Playform.Lavender,
-                            onClick = { selectedCategory = "account_stats" }
-                        )
-                    }
                     item {
                         SettingsPanel {
                             SettingHeading(tx(lang, "player_name"), Icons.Rounded.Person)

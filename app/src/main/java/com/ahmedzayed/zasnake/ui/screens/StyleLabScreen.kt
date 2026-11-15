@@ -92,11 +92,6 @@ internal fun StyleLabItemCard(
         }
         Text(title, color = Playform.Ink, fontSize = 13.sp,
             fontWeight = FontWeight.Black, minLines = 1, maxLines = 2)
-        Text(when {
-            equipped -> if (ar) "مُجهّز حاليًا" else "Equipped"
-            owned -> if (ar) "مملوك" else "Owned"
-            else -> "🪙 $price"
-        }, color = Playform.TextSecondary, fontSize = 12.sp)
         Button(
             onClick = onAction,
             enabled = !equipped && (owned || balance >= price),
@@ -111,7 +106,7 @@ internal fun StyleLabItemCard(
             Text(when {
                 equipped -> if (ar) "مُجهّز ✓" else "Equipped ✓"
                 owned -> if (ar) "تجهيز" else "Equip"
-                else -> if (ar) "شراء" else "Buy"
+                else -> "🪙 $price"
             }, fontWeight = FontWeight.Bold, fontSize = 12.sp)
         }
     }
