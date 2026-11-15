@@ -9,6 +9,13 @@ ALLOWED_ROUTES = {
 MAX_REQUEST_BYTES = 8192
 
 
+def allowed_in_mode(method: str, path: str, enabled: bool, session_probe_only: bool) -> bool:
+    """A session-probe revision must not forward billing or other routes."""
+    if session_probe_only:
+        return not enabled and (method, path) == ("POST", "/session")
+    return enabled and route_allowed(method, path)
+
+
 def private_service_url(value: str) -> str:
     """Accept only a concrete HTTPS Cloud Run service root (never client supplied)."""
     if not isinstance(value, str):
