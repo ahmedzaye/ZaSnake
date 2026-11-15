@@ -18,6 +18,8 @@ import requests
 
 from purchase_validation import validate_product_purchase_v2, PurchaseValidationError
 from atomic_wallet_settlement import finalize_consumed_purchase, current_net_grants
+from paid_item_entitlements import purchase_paid_item_staging, paid_item_wallet_snapshot_staging
+from wallet_repository import PREMIUM_ITEM_PRICES
 from wallet_rules import WalletError
 
 app = Flask(__name__)
@@ -30,6 +32,15 @@ SCOPES = ["https://www.googleapis.com/auth/androidpublisher"]
 # Explicitly off by default. Enabling requires refund reconciliation, server
 # authoritative spending, account migration, load tests and abuse controls.
 ATOMIC_BILLING_ENABLED = os.environ.get("ATOMIC_BILLING_ENABLED", "false").lower() == "true"
+# Additional independent kill switches. Never enable until legacy ownership is
+# reconciled and refund/RTDN recovery plus abuse controls are operational.
+PAID_SPENDING_ENABLED = os.environ.get("PAID_SPENDING_ENABLED", "false").lower() == "true"
+LEGACY_OWNERSHIP_RECONCILED = os.environ.get("LEGACY_OWNERSHIP_RECONCILED", "false").lower() == "true"
+
+
+def paid_spending_ready():
+    return (ATOMIC_BILLING_ENABLED and PAID_SPENDING_ENABLED
+            and LEGACY_OWNERSHIP_RECONCILED)
 
 
 def failure(code, status):
@@ -211,6 +222,57 @@ def claim():
     except Exception:
         return failure("purchase_ledger_unavailable", 503)
     return jsonify({"grants": granted})
+
+
+
+@app.get("/paid-wallet")
+def paid_wallet():
+    """Authenticated read of *paid-only* wallet, NOT the local earned coin balance.
+
+    No mobile Gateway route exists yet. This endpoint is closed unless all
+    explicit readiness flags are present.
+    """
+    if not paid_spending_ready():
+        return failure("paid_spending_disabled", 503)
+    player_id = session_player()
+    if not player_id:
+        return failure("not_authenticated", 401)
+    try:
+        snapshot = paid_item_wallet_snapshot_staging(db, player_id)
+    except (WalletError, Exception):
+        return failure("paid_wallet_unavailable", 503)
+    return jsonify(snapshot)
+
+
+@app.post("/paid-wallet/items")
+def purchase_paid_wallet_item():
+    """Atomic, idempotent paid-only item spend. Never trust client prices/IDs.
+
+    A migration decision is required before enabling: the backend cannot know
+    what a player already bought with local/free coins on previous devices.
+    """
+    if not paid_spending_ready():
+        return failure("paid_spending_disabled", 503)
+    player_id = session_player()
+    if not player_id:
+        return failure("not_authenticated", 401)
+    if not request.is_json:
+        return failure("json_required", 415)
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict) or set(payload) != {"itemId"}:
+        return failure("invalid_paid_item", 400)
+    item_id = payload["itemId"]
+    if not isinstance(item_id, str) or item_id not in PREMIUM_ITEM_PRICES:
+        return failure("unknown_paid_item", 400)
+    try:
+        result = purchase_paid_item_staging(db, player_id, item_id)
+    except WalletError as error:
+        if str(error) == "insufficient_funds":
+            return failure("insufficient_paid_balance", 409)
+        return failure("paid_item_unavailable", 409)
+    except Exception:
+        return failure("paid_wallet_unavailable", 503)
+    return jsonify(result)
 
 
 @app.get("/health")
