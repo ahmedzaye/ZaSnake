@@ -163,7 +163,10 @@ data class PlayerStats(
     val claimedAchievementRewards: Map<String, Int> = emptyMap(),
     /** Idempotent shop transactions; merged by transaction id across local/cloud saves. */
     val coinSpending: Map<String, Int> = emptyMap(),
-    /** Ephemeral server-authoritative grants: NEVER serialize into local or Play Games saves. */
+    /** Ephemeral Play-verified grants, kept separate from locally spendable game coins.
+     * Never serialize or use these as authorization for a local shop purchase.
+     * Paid spending must be committed by the server before this can affect game items.
+     */
     val verifiedPurchaseGrants: Map<String, Int> = emptyMap(),
     val unlockedSkins: Set<String> = emptySet(),
     /** Head unlocks are independent of colors; synced with stable transaction ids. */
@@ -186,7 +189,8 @@ data class PlayerStats(
         doubledRoundCoins.values.sumOf { it.toLong() } +
         claimedAchievementRewards.values.sumOf { it.toLong() } +
         claimedDailyChallenges.values.sumOf { it.toLong() } +
-        verifiedPurchaseGrants.values.sumOf { it.toLong() } +
+        // Paid grants belong to the server ledger. Local shop operations must
+        // NEVER spend them without a matching server-authorized transaction.
         claimedDailyLogins.values.sumOf { day -> DAILY_LOGIN_COIN_SEQUENCE.getOrElse(day - 1) { 0 }.toLong() } -
         coinSpending.values.sumOf { it.toLong() }
     ).coerceAtLeast(0L)
