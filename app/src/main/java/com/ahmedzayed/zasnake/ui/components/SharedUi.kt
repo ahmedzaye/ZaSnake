@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -169,5 +170,34 @@ internal fun formatPlayTime(millis: Long, language: String): String {
         if (hours > 0) "${hours}س ${minutes}د" else "${minutes}د"
     } else {
         if (hours > 0) "${hours}h ${minutes}m" else "${minutes}m"
+    }
+}
+
+
+/**
+ * Compact visual claim action shared by Daily Rewards and Achievements.
+ * Material3 retains a minimum accessible touch target around the 36dp visual button.
+ * The reward callback and eligibility remain with each owning screen.
+ */
+@Composable
+internal fun RewardClaimButton(
+    label: String,
+    enabled: Boolean = true,
+    onClick: () -> Unit
+) {
+    Button(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = Modifier.height(36.dp),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+            horizontal = 10.dp, vertical = 0.dp
+        ),
+        shape = RoundedCornerShape(10.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = Playform.Coral,
+            contentColor = Playform.Ink
+        )
+    ) {
+        Text(label, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
     }
 }
