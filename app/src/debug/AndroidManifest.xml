@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Debug builds alone may use an ADB-reversed localhost HTTP proxy. -->
+    <application
+        android:networkSecurityConfig="@xml/zasnake_debug_network_security" />
+</manifest>
