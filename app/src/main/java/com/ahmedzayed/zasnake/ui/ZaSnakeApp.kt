@@ -1129,17 +1129,14 @@ private fun DailyRewardsScreen(
                         verticalArrangement = Arrangement.spacedBy(7.dp)) {
                         Text("🪙 ${challenge.coins}", color = Playform.GoldText,
                             fontWeight = FontWeight.Black, fontSize = 12.sp)
-                        androidx.compose.runtime.CompositionLocalProvider(
-                            LocalLayoutDirection provides LayoutDirection.Ltr
-                        ) {
-                            Text("${current.coerceAtMost(challenge.target)}/${challenge.target}",
-                                color = Playform.TextSecondary, fontSize = 12.sp)
-                        }
-                        if (claimed) {
-                            Text("✓", color = Color(0xFF286C5B),
-                                fontWeight = FontWeight.Black, fontSize = 15.sp)
-                        } else if (finished) {
-                            Button(
+                        when {
+                            claimed -> androidx.compose.material3.Icon(
+                                Icons.Rounded.CheckCircle,
+                                contentDescription = if (ar) "تم استلام المكافأة" else "Reward claimed",
+                                tint = Color(0xFF286C5B),
+                                modifier = Modifier.size(24.dp)
+                            )
+                            finished -> Button(
                                 onClick = { onClaimChallenge(challenge.id) },
                                 enabled = clockIsValid,
                                 modifier = Modifier.heightIn(min = 44.dp),
@@ -1148,6 +1145,12 @@ private fun DailyRewardsScreen(
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = Playform.Coral, contentColor = Playform.Ink)
                             ) { Text(tx(lang, "claim_short"), fontSize = 12.sp) }
+                            else -> androidx.compose.runtime.CompositionLocalProvider(
+                                LocalLayoutDirection provides LayoutDirection.Ltr
+                            ) {
+                                Text("${current.coerceAtMost(challenge.target)}/${challenge.target}",
+                                    color = Playform.TextSecondary, fontSize = 12.sp)
+                            }
                         }
                     }
                 }
@@ -2456,16 +2459,14 @@ private fun StatisticsScreen(
                             verticalArrangement = Arrangement.spacedBy(7.dp)) {
                             Text("🪙 ${achievement.rewardCoins}", color = Playform.GoldText,
                                 fontWeight = FontWeight.Black, fontSize = 12.sp)
-                            androidx.compose.runtime.CompositionLocalProvider(
-                                LocalLayoutDirection provides LayoutDirection.Ltr
-                            ) {
-                                Text(progressText, color = Playform.TextSecondary, fontSize = 12.sp)
-                            }
-                            if (claimed) {
-                                Text("✓", color = Color(0xFF286C5B),
-                                    fontWeight = FontWeight.Black, fontSize = 15.sp)
-                            } else if (unlocked) {
-                                Button(
+                            when {
+                                claimed -> androidx.compose.material3.Icon(
+                                    Icons.Rounded.CheckCircle,
+                                    contentDescription = if (ar) "تم استلام المكافأة" else "Reward claimed",
+                                    tint = Color(0xFF286C5B),
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                unlocked -> Button(
                                     onClick = { onClaimReward(achievement.id) },
                                     modifier = Modifier.heightIn(min = 44.dp),
                                     contentPadding = PaddingValues(horizontal = 11.dp),
@@ -2473,6 +2474,11 @@ private fun StatisticsScreen(
                                     colors = ButtonDefaults.buttonColors(
                                         containerColor = Playform.Coral, contentColor = Playform.Ink)
                                 ) { Text(tx(lang, "claim_short"), fontSize = 12.sp) }
+                                else -> androidx.compose.runtime.CompositionLocalProvider(
+                                    LocalLayoutDirection provides LayoutDirection.Ltr
+                                ) {
+                                    Text(progressText, color = Playform.TextSecondary, fontSize = 12.sp)
+                                }
                             }
                         }
                     }
