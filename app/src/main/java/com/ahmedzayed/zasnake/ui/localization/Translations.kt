@@ -2,12 +2,10 @@ package com.ahmedzayed.zasnake.ui
 
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.rounded.Language
-import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material.icons.rounded.Vibration
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
-import android.provider.Settings
 import com.ahmedzayed.zasnake.game.Difficulty
 import com.ahmedzayed.zasnake.game.GameMode
 
