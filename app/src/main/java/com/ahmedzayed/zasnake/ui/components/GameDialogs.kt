@@ -182,5 +182,3 @@ internal fun GameOverCard(state: AppUiState, viewModel: GameViewModel, rewardedA
     }
     }
 }
-
-@Composable
