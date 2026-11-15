@@ -1,6 +1,7 @@
 package com.ahmedzayed.zasnake.ui
 
 import androidx.activity.compose.BackHandler
+import com.ahmedzayed.zasnake.BuildConfig
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -105,7 +106,8 @@ internal fun SettingsScreen(
     onPrivacyOptions: () -> Unit,
     playGamesAllowed: Boolean,
     playGamesConfigured: Boolean,
-    onRequestPlayGamesSignIn: () -> Unit
+    onRequestPlayGamesSignIn: () -> Unit,
+    onTestGameServerAuth: (((Boolean) -> Unit) -> Unit)?
 ) {
     val lang = state.settings.language
     val settings = state.settings
@@ -115,6 +117,9 @@ internal fun SettingsScreen(
     var editingPlayerName by remember { mutableStateOf(false) }
     var nameDraft by remember { mutableStateOf("") }
     var nameInvalid by remember { mutableStateOf(false) }
+    // Debug-only result: never keep a server auth code in Compose state.
+    var serverAuthTestRunning by remember { mutableStateOf(false) }
+    var serverAuthTestResult by remember { mutableStateOf<Boolean?>(null) }
 
     if (editingPlayerName) {
         AlertDialog(
@@ -263,6 +268,56 @@ internal fun SettingsScreen(
                                     Text(tx(lang, if (state.cloudStatus in listOf("synced", "connected", "sync_error"))
                                         "pgs_retry" else "pgs_connect"))
                                 }
+                            }
+
+                            if (BuildConfig.DEBUG && onTestGameServerAuth != null && playGamesAllowed) {
+                                val webClientConfigured =
+                                    BuildConfig.PGS_WEB_CLIENT_ID.endsWith(".apps.googleusercontent.com")
+                                HorizontalDivider(color = DividerColor)
+                                Text(
+                                    if (lang == "ar") "اختبار مصادقة خادم الألعاب (Debug)"
+                                    else "Game server authentication test (Debug)",
+                                    color = PrimaryText, fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                OutlinedButton(
+                                    onClick = {
+                                        serverAuthTestRunning = true
+                                        serverAuthTestResult = null
+                                        onTestGameServerAuth { success ->
+                                            serverAuthTestRunning = false
+                                            serverAuthTestResult = success
+                                        }
+                                    },
+                                    enabled = playGamesConfigured && webClientConfigured &&
+                                        !serverAuthTestRunning
+                                ) {
+                                    Text(if (lang == "ar") "اختبار رمز الخادم"
+                                         else "Test game server authentication")
+                                }
+                                Text(
+                                    when {
+                                        !playGamesConfigured ->
+                                            if (lang == "ar") "خدمة Play Games غير مهيأة."
+                                            else "Play Games is not configured."
+                                        !webClientConfigured ->
+                                            if (lang == "ar") "أضف pgsWebClientId إلى إعدادات بناء Debug أولًا."
+                                            else "Set pgsWebClientId in the Debug build configuration first."
+                                        serverAuthTestRunning ->
+                                            if (lang == "ar") "جارٍ طلب رمز مؤقت من Play Games..."
+                                            else "Requesting a temporary code from Play Games..."
+                                        serverAuthTestResult == true ->
+                                            if (lang == "ar") "نجح: استلم التطبيق رمز الخادم. لم يُختبر تبادل الرمز مع Backend."
+                                            else "Success: received a server auth code. Backend exchange was not tested."
+                                        serverAuthTestResult == false ->
+                                            if (lang == "ar") "فشل طلب الرمز. راجع تسجيل دخول Play Games وإعداد Game server."
+                                            else "Code request failed. Check Play Games sign-in and Game server credentials."
+                                        else ->
+                                            if (lang == "ar") "سجّل الدخول إلى Play Games أولًا. الاختبار لا يرسل الرمز ولا يفعّل الشراء."
+                                            else "Sign in to Play Games first. This test does not send the code or enable purchases."
+                                    },
+                                    color = Muted, fontSize = 12.sp, lineHeight = 17.sp
+                                )
                             }
                             HorizontalDivider(color = DividerColor)
                             SettingHeading(tx(lang, "cloud_sync_title"), Icons.Rounded.CloudOff)

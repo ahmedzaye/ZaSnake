@@ -3,6 +3,7 @@ package com.ahmedzayed.zasnake.ui
 import com.ahmedzayed.zasnake.ads.RewardedAds
 import com.ahmedzayed.zasnake.ads.RewardPlacement
 import com.ahmedzayed.zasnake.billing.CoinPriceCatalog
+import com.ahmedzayed.zasnake.BuildConfig
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
@@ -411,7 +412,22 @@ fun ZaSnakeApp(
                                                 }
                                             }
                                         }
-                                    })
+                                    },
+                                    onTestGameServerAuth = if (BuildConfig.DEBUG && coinPriceCatalog != null) {
+                                        { onResult: (Boolean) -> Unit ->
+                                            // Adult Debug only: never store, log, or transmit the code.
+                                            if (!playGamesBridge.isConfigured() ||
+                                                !BuildConfig.PGS_WEB_CLIENT_ID.endsWith(".apps.googleusercontent.com")) {
+                                                onResult(false)
+                                            } else {
+                                                playGamesBridge.requestServerAuthCode(
+                                                    BuildConfig.PGS_WEB_CLIENT_ID
+                                                ) { code ->
+                                                    onResult(!code.isNullOrBlank())
+                                                }
+                                            }
+                                        }
+                                    } else null)
                                 AppScreen.STATISTICS -> StatisticsScreen(state, onBack = viewModel::navigateHomeFromSubscreen,
                                     onClaimReward = { id ->
                                         val rewarded = viewModel.claimAchievementReward(id)
