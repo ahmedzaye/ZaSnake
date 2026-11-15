@@ -556,6 +556,7 @@ internal fun themeTitle(theme: GameTheme, language: String) = tx(language, "them
 internal fun themeDescription(theme: GameTheme, language: String) = tx(language, "theme_${theme.key}_desc")
 
 
+@Composable
 internal fun SettingsCategoryCard(
     title: String,
     description: String,
