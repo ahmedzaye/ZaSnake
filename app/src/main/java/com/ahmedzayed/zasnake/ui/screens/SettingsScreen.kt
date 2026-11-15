@@ -346,8 +346,8 @@ internal fun SettingsScreen(
                                             if (lang == "ar") "جارٍ فحص App Check ومصادقة اللاعب مع Backend..."
                                             else "Checking App Check and authenticating with Backend..."
                                         serverExchangeResult == "OK" ->
-                                            if (lang == "ar") "نجح: تحقّق Backend من اللاعب وأنشأ جلسة مؤقتة. لم تُحفظ."
-                                            else "Success: backend verified player and created a temporary session; not stored."
+                                            if (lang == "ar") "نجح: تحقّق Backend من اللاعب وأنشأ جلسة؛ التطبيق لا يحتفظ برمز الجلسة."
+                                            else "Success: backend verified player and created a session; app discarded its token."
                                         serverExchangeResult == "APP_CHECK" ||
                                             serverExchangeResult == "APP_CHECK_REJECTED" ->
                                             if (lang == "ar") "فشل App Check: راجع تسجيل رمز المحاكي التجريبي في Firebase."
