@@ -25,17 +25,21 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      # The former android-actions/setup-android@v3 tried to install the
-      # obsolete Android SDK 'tools' package and failed BEFORE compiling.
-      # Ubuntu GitHub-hosted runners already have the Android SDK command-line
-      # tools. Install only the requested modern platform/build-tools.
+      # GitHub runners can have ANDROID_HOME without sdkmanager on PATH.
+      # setup-android@v4 installs the command-line tools, configures PATH,
+      # accepts SDK licenses, and does NOT request the removed 'tools' package.
       - name: Prepare Android SDK 36
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
+
+      - name: Verify Android SDK 36 components
         shell: bash
         run: |
           set -euo pipefail
-          echo "ANDROID_HOME=${ANDROID_HOME:?GitHub runner Android SDK missing}"
           command -v sdkmanager
-          sdkmanager --install "platforms;android-36" "build-tools;36.0.0"
+          test -f "${ANDROID_HOME}/platforms/android-36/android.jar"
+          test -d "${ANDROID_HOME}/build-tools/36.0.0"
 
       # Wrapper JAR is not committed in this repository. Do not invoke
       # ./gradlew until the verified wrapper JAR is restored.
