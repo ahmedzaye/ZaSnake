@@ -1,8 +1,9 @@
 """Emulator-only, immutable Google Play RTDN inbox prototype.
 
-This module is NOT wired into the HTTP receiver, Pub/Sub, Cloud Run, billing,
-or any automated reconciler. Its only write target is the local Firestore
-emulator project demo-zasnake-billing at 127.0.0.1:8085.
+This module is wired to an OPTIONAL, disabled-by-default receiver preview
+which only permits writes to the local Firestore emulator. No live Pub/Sub
+push subscription, Cloud Run service, billing or automatic reconciler is
+wired. The only write target is demo-zasnake-billing at 127.0.0.1:8085.
 
 Store only vetted event metadata and SHA-256 digests, never raw notification
 payloads, OAuth tokens, purchase tokens, user identities, or order IDs.

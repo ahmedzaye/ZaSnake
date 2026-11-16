@@ -1,9 +1,10 @@
 """Staging-only Google Play RTDN push receiver.
 
-Isolated from the billing backend: NO Firestore, Google Play API, purchase
-claims or grants. Defaults disabled. In the only enabled preview mode, ACK
-*authenticated* Google Play test messages, but NACK all purchase/refund hints
-until a durable queue and authoritative reconciliation exist.
+Isolated from the billing backend: NO live Firestore, Google Play API, purchase
+claims or grants. Defaults disabled. Optional integration persists a vetted
+hint in the LOCAL Firestore emulator only. ACK only authenticated Google Play
+test messages after an enabled emulator write succeeds; NACK all real
+purchase/refund hints until authoritative reconciliation is separately built.
 
 Deployment must additionally require Cloud Run IAM authentication. A Pub/Sub
 authenticated push subscription must use the expected service account and
@@ -25,6 +26,9 @@ ENABLED = os.getenv("RTDN_RECEIVER_ENABLED", "false").lower() == "true"
 PUSH_AUDIENCE = os.getenv("RTDN_PUSH_AUDIENCE", "")
 PUSH_EMAIL = os.getenv("RTDN_PUSH_SERVICE_ACCOUNT", "")
 PUSH_SUBSCRIPTION = os.getenv("RTDN_PUSH_SUBSCRIPTION", "")
+INBOX_EMULATOR_ENABLED = (
+    os.getenv("RTDN_INBOX_EMULATOR_ENABLED", "false").lower() == "true"
+)
 
 
 def configured() -> bool:
@@ -61,6 +65,27 @@ def signed_push_identity_valid() -> bool:
     )
 
 
+def _persist_emulator_notification(envelope: dict) -> dict:
+    """Persist only in the local demo emulator. Never instantiate a real DB.
+
+    This mode is for controlled offline integration tests. The library also
+    enforces the same target before any Firestore operation.
+    """
+    from google.cloud import firestore
+    from rtdn_inbox import (
+        EMULATOR_HOST, EMULATOR_PROJECT, InboxError, record_rtdn_hint,
+    )
+
+    if (os.environ.get("FIRESTORE_EMULATOR_HOST") != EMULATOR_HOST
+            or os.environ.get("GCLOUD_PROJECT") != EMULATOR_PROJECT
+            or os.environ.get("GOOGLE_CLOUD_PROJECT") != EMULATOR_PROJECT):
+        raise InboxError("emulator_required")
+    db = firestore.Client(project=EMULATOR_PROJECT)
+    return record_rtdn_hint(
+        db, envelope, expected_subscription=PUSH_SUBSCRIPTION
+    )
+
+
 @app.post("/pubsub/rtdn")
 def receive():
     if not ENABLED:
@@ -86,8 +111,18 @@ def receive():
     except (RefundEventError, ValueError, TypeError):
         return jsonify({"error": "invalid_notification"}), 400
 
+    if INBOX_EMULATOR_ENABLED:
+        try:
+            # Only after authenticating the push identity and validating Play.
+            # New record and exact duplicate are both safe. Any failure NACKs.
+            _persist_emulator_notification(envelope)
+        except Exception:
+            # Never echo/log OAuth tokens, raw payloads or Firestore errors.
+            return jsonify({"error": "inbox_unavailable"}), 503
+
     if event["kind"] == "test":
-        # Only test notifications can be safely ACKed without durable storage.
+        # In emulator mode ACK only if durable create / exact replay passed.
+        # Existing disabled-by-default preview behavior remains unchanged.
         return "", 204
     # Any real purchase/refund event MUST be stored durably + reconciled via
     # Google Play API BEFORE returning 2xx. Not implemented in this PR.

@@ -7,5 +7,6 @@ ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 COPY rtdn-receiver/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 COPY backend/play_refund_events.py ./play_refund_events.py
+COPY backend/rtdn_inbox.py ./rtdn_inbox.py
 COPY rtdn-receiver/rtdn_push_receiver.py ./rtdn_push_receiver.py
 CMD ["sh", "-c", "exec gunicorn --bind 0.0.0.0:${PORT:-8080} --workers 2 --threads 4 --timeout 60 rtdn_push_receiver:app"]
