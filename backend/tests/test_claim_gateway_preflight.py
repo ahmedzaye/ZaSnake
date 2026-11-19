@@ -16,10 +16,14 @@ class ClaimGatewayTests(unittest.TestCase):
         cls.client = cls.server.app.test_client()
 
     def setUp(self):
-        self.flag = self.server.ATOMIC_BILLING_ENABLED
+        self.flags = (
+            self.server.ATOMIC_BILLING_ENABLED,
+            self.server.CHECKOUT_VERIFIED_ENABLED,
+        )
 
     def tearDown(self):
-        self.server.ATOMIC_BILLING_ENABLED = self.flag
+        (self.server.ATOMIC_BILLING_ENABLED,
+         self.server.CHECKOUT_VERIFIED_ENABLED) = self.flags
 
     def test_checkout_readiness_fails_closed_and_requires_player(self):
         self.server.ATOMIC_BILLING_ENABLED = False
@@ -28,7 +32,14 @@ class ClaimGatewayTests(unittest.TestCase):
         self.assertEqual(disabled.status_code, 503)
         auth.assert_not_called()
 
+        # Atomic billing alone MUST NOT authorize a new checkout.
         self.server.ATOMIC_BILLING_ENABLED = True
+        with patch.object(self.server, "session_player") as auth:
+            still_disabled = self.client.get("/checkout-ready")
+        self.assertEqual(still_disabled.status_code, 503)
+        auth.assert_not_called()
+
+        self.server.CHECKOUT_VERIFIED_ENABLED = True
         with patch.object(self.server, "session_player", return_value=None):
             unauthenticated = self.client.get("/checkout-ready")
         self.assertEqual(unauthenticated.status_code, 401)
