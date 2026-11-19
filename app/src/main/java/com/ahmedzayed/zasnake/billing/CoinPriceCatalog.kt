@@ -117,6 +117,7 @@ class CoinPriceCatalog(
             ensureSession()
             resumePendingPurchases()
             refreshPaidWallet()
+            if (sessionValid) refreshCheckoutReadiness()
             return
         }
         state = State.LOADING
@@ -256,23 +257,43 @@ class CoinPriceCatalog(
         if (!canBuy(productId)) return
         val detail = productDetails[productId] ?: return
         val offer = detail.oneTimePurchaseOfferDetailsList?.firstOrNull() ?: return
-        // Billing Library 8 exposes nullable offer tokens. Fail closed rather than
-        // starting a purchase without the Google Play offer that was displayed.
         val offerToken = offer.offerToken?.takeIf { it.isNotBlank() } ?: return
-        val flow = BillingFlowParams.newBuilder()
-            .setProductDetailsParamsList(
-                listOf(
-                    BillingFlowParams.ProductDetailsParams.newBuilder()
-                        .setProductDetails(detail)
-                        .setOfferToken(offerToken)
-                        .build()
-                )
-            )
-            .setObfuscatedAccountId(checkNotNull(accountHash))
-            .build()
-        val result = client.launchBillingFlow(activity, flow)
-        if (result.responseCode != BillingClient.BillingResponseCode.OK) {
-            statusMessage = "Unable to start Google Play checkout (${result.responseCode})."
+        val expectedSession = sessionToken ?: return
+
+        // Cached readiness is insufficient: fail closed if the server has
+        // paused checkout between shop opening and the purchase button press.
+        processing = true
+        checkoutReady = false
+        worker.execute {
+            val approved = runCatching {
+                getJson("/checkout-ready", expectedSession)
+                    .optBoolean("checkoutReady", false)
+            }.getOrDefault(false)
+            activity.runOnUiThread {
+                if (closed) return@runOnUiThread
+                processing = false
+                checkoutReady = approved && sessionValid && sessionToken == expectedSession
+                if (!checkoutReady || !client.isReady ||
+                    productDetails[productId] != detail) {
+                    statusMessage = "Checkout paused: server verification unavailable."
+                    return@runOnUiThread
+                }
+                val flow = BillingFlowParams.newBuilder()
+                    .setProductDetailsParamsList(
+                        listOf(
+                            BillingFlowParams.ProductDetailsParams.newBuilder()
+                                .setProductDetails(detail)
+                                .setOfferToken(offerToken)
+                                .build()
+                        )
+                    )
+                    .setObfuscatedAccountId(checkNotNull(accountHash))
+                    .build()
+                val result = client.launchBillingFlow(activity, flow)
+                if (result.responseCode != BillingClient.BillingResponseCode.OK) {
+                    statusMessage = "Unable to start Google Play checkout (${result.responseCode})."
+                }
+            }
         }
     }
 
