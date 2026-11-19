@@ -21,6 +21,23 @@ class ClaimGatewayTests(unittest.TestCase):
     def tearDown(self):
         self.server.ATOMIC_BILLING_ENABLED = self.flag
 
+    def test_checkout_readiness_fails_closed_and_requires_player(self):
+        self.server.ATOMIC_BILLING_ENABLED = False
+        with patch.object(self.server, "session_player") as auth:
+            disabled = self.client.get("/checkout-ready")
+        self.assertEqual(disabled.status_code, 503)
+        auth.assert_not_called()
+
+        self.server.ATOMIC_BILLING_ENABLED = True
+        with patch.object(self.server, "session_player", return_value=None):
+            unauthenticated = self.client.get("/checkout-ready")
+        self.assertEqual(unauthenticated.status_code, 401)
+
+        with patch.object(self.server, "session_player", return_value="player1"):
+            allowed = self.client.get("/checkout-ready")
+        self.assertEqual(allowed.status_code, 200)
+        self.assertEqual(allowed.get_json(), {"checkoutReady": True})
+
     def test_claim_disabled_refuses_before_session(self):
         self.server.ATOMIC_BILLING_ENABLED = False
         with patch.object(self.server, "session_player") as session:
