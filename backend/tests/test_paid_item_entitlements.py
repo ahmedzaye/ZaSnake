@@ -62,6 +62,37 @@ class PaidItemEntitlementTests(unittest.TestCase):
         }
         self.assertEqual(read_paid_item_ids_staging(db, "player"), {"theme_ocean"})
 
+    def test_refund_debt_suspends_paid_ownership_without_erasing_receipt(self):
+        from paid_item_entitlements import paid_item_wallet_snapshot_staging
+        db = MagicMock()
+        snap = db.collection.return_value.document.return_value.get.return_value
+        snap.exists = True
+        snap.to_dict.return_value = {
+            "grants": {"p" * 64: 1000},
+            "spends": {"item:skin_egypt": 180},
+            "revoked": {"p" * 64: 1000},
+        }
+        wallet = paid_item_wallet_snapshot_staging(db, "player")
+        self.assertEqual(wallet["spendablePaidCoins"], 0)
+        self.assertEqual(wallet["ownedPaidItemIds"], [])
+        self.assertTrue(wallet["paidEntitlementsSuspended"])
+        self.assertEqual(snap.to_dict.return_value["spends"]["item:skin_egypt"], 180)
+
+    def test_paid_ownership_usable_without_refund_debt(self):
+        from paid_item_entitlements import paid_item_wallet_snapshot_staging
+        db = MagicMock()
+        snap = db.collection.return_value.document.return_value.get.return_value
+        snap.exists = True
+        snap.to_dict.return_value = {
+            "grants": {"p" * 64: 1000},
+            "spends": {"item:skin_egypt": 180},
+            "revoked": {},
+        }
+        wallet = paid_item_wallet_snapshot_staging(db, "player")
+        self.assertEqual(wallet["spendablePaidCoins"], 820)
+        self.assertEqual(wallet["ownedPaidItemIds"], ["skin_egypt"])
+        self.assertFalse(wallet["paidEntitlementsSuspended"])
+
     def test_atomic_duplicate_does_not_write_again(self):
         # Test the separated transaction body with a fake transaction,
         # without relying on decorator internals or live GCP access.
