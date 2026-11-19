@@ -24,13 +24,24 @@ android {
         buildConfig = true
     }
 
-    // Public configuration only. Never put the OAuth client secret in Android.
-    val webClientId = providers.gradleProperty("pgsWebClientId").orElse("").get()
-    // Gateway URL is intentionally empty until the separate App Check protected
-    // mobile-facing service has been deployed and independently tested.
-    val billingGatewayUrl = providers.gradleProperty("billingGatewayUrl").orElse("").get()
+    // Public connection settings only; never place the OAuth client secret in Android.
+    // The Cloud Run gateway is deployed but gated OFF until E2E testing is complete.
+    val webClientId = providers.gradleProperty("pgsWebClientId")
+        .orElse("914975720790-no2qad2ptl94655u5o03phhtldjj2idd.apps.googleusercontent.com").get()
+    val billingGatewayUrl = providers.gradleProperty("billingGatewayUrl")
+        .orElse("https://zasnake-billing-gateway-staging-a4wjdske6q-ew.a.run.app").get()
+    // Billing stays disabled in all normal builds; internal testing must opt in.
     val billingIntegrationEnabled = providers.gradleProperty("billingIntegrationEnabled")
         .orElse("false").get().equals("true", ignoreCase = true)
+    if (billingIntegrationEnabled) {
+        require(webClientId.endsWith(".apps.googleusercontent.com")) {
+            "pgsWebClientId must be a Web OAuth client ID"
+        }
+        require(billingGatewayUrl.startsWith("https://") &&
+            billingGatewayUrl.endsWith(".run.app")) {
+            "billingGatewayUrl must point to the App Check gateway"
+        }
+    }
     defaultConfig {
         buildConfigField("String", "PGS_WEB_CLIENT_ID", "\"$webClientId\"")
         buildConfigField("String", "BILLING_BASE_URL",
@@ -95,7 +106,7 @@ dependencies {
     implementation("com.google.android.gms:play-services-ads:25.5.0")
     implementation("com.google.android.ump:user-messaging-platform:4.0.0")
 
-    // Prices only; real purchase checkout is intentionally disabled pending verification.
+    // Billing checkout remains gated by an explicit build flag and the private server.
     implementation("com.android.billingclient:billing:8.0.0")
 
     // Google Play Games Services v2; needs Console OAuth, SHA-1 and achievement IDs.
