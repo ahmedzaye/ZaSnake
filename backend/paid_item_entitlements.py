@@ -111,7 +111,13 @@ def paid_item_wallet_snapshot_staging(db, authenticated_player_id: str) -> dict:
     snapshot = wallet_ref.get()
     state = _state_from_document(snapshot.to_dict() if snapshot.exists else None)
     owned = _purchased_paid_item_ids(state)
+    # A late full refund can leave a negative paid-wallet balance after spending.
+    # Keep evidence in Firestore for retries/audit, but suspend paid ownership
+    # while there is refund debt. Without an allocation ledger we cannot
+    # determine which item was funded by the refunded pack; fail closed.
+    in_debt = state.balance < 0
     return {
         "spendablePaidCoins": max(0, state.balance),
-        "ownedPaidItemIds": sorted(owned),
+        "ownedPaidItemIds": [] if in_debt else sorted(owned),
+        "paidEntitlementsSuspended": in_debt,
     }
