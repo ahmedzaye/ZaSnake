@@ -80,12 +80,14 @@ class SnakeEngineTest {
     fun timeAttackClockPausesWithTheRound() {
         val engine = SnakeEngine()
         engine.startNew(GameMode.TIME_ATTACK, Difficulty.HARD, newWallsEnabled = false, deviceId = "test")
-        engine.update(250L)
+        // HARD advances every 80 ms. Stay below one step so a random apple
+        // cannot add TIME_BONUS_MS and make this pause test flaky.
+        engine.update(40L)
         val frozenAt = engine.timeRemainingMs
         engine.pause()
         engine.update(250L)
 
-        assertEquals(SnakeEngine.START_TIME_MS - 250L, frozenAt)
+        assertEquals(SnakeEngine.START_TIME_MS - 40L, frozenAt)
         assertEquals(frozenAt, engine.timeRemainingMs)
     }
 
