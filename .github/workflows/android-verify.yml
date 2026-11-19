@@ -52,11 +52,11 @@ jobs:
         run: |
           gradle --no-daemon --stacktrace :app:compileDebugKotlin :app:testDebugUnitTest :app:assembleDebug
 
-      - name: Build unsigned v4 release AAB with R8
+      - name: Build unsigned v5 release AAB with R8
         run: |
           gradle --no-daemon --stacktrace :app:bundleRelease
 
-      - name: Verify v4 release manifest and bundle
+      - name: Verify v5 release manifest and bundle
         shell: bash
         run: |
           python3 - <<'PY'
@@ -85,7 +85,7 @@ jobs:
               raise SystemExit("v5 Billing permission missing")
           present = perms & forbidden
           if present:
-              raise SystemExit("Forbidden v4 release permission(s): " + str(sorted(present)))
+              raise SystemExit("Forbidden v5 release permission(s): " + str(sorted(present)))
           if manifest.get("package") != "com.zayedart.zasnake":
               raise SystemExit("Unexpected package in merged release manifest")
           bundles = list(pathlib.Path("app/build/outputs/bundle/release").glob("*.aab"))
@@ -93,6 +93,18 @@ jobs:
               raise SystemExit("Release AAB was not produced")
           print("v5 release manifest passed; unsigned bundle generated")
           PY
+
+      # Compile the explicitly opted-in internal billing variant as well.
+      # No signing, publishing, deployment or production billing activation.
+      - name: Compile internal billing-enabled v5 variant
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle --no-daemon --stacktrace -PbillingIntegrationEnabled=true :app:compileReleaseKotlin
+          config="app/build/generated/source/buildConfig/release/com/ahmedzayed/zasnake/BuildConfig.java"
+          test -f "$config"
+          grep -Fq 'BILLING_INTEGRATION_ENABLED = true' "$config"
+          grep -Fq 'zasnake-billing-gateway-staging-a4wjdske6q-ew.a.run.app' "$config"
 
       # For verification only: unsigned artifacts MUST NOT be uploaded to Play.
       # Signing must use the developer's existing private Play upload key.
