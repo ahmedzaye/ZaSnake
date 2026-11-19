@@ -5,6 +5,7 @@ ALLOWED_ROUTES = {
     ("POST", "/session"),
     ("POST", "/claim"),
     ("GET", "/grants"),
+    ("GET", "/checkout-ready"),
     ("GET", "/paid-wallet"),
     ("POST", "/paid-wallet/items"),
 }
