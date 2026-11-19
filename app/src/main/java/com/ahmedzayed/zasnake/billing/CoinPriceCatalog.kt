@@ -72,6 +72,9 @@ class CoinPriceCatalog(
     private var connecting = false
     private var requestVersion = 0
     private var sessionToken: String? = null
+    // Server kill switch is separate from the paid cosmetics wallet.
+    // Never open Google Play checkout without an authenticated readiness reply.
+    private var checkoutReady by mutableStateOf(false)
     private var accountHash: String? = null
     private var authBusy = false
     private var processing = false
@@ -199,12 +202,29 @@ class CoinPriceCatalog(
                         loadGrants()
                         resumePendingPurchases()
                         refreshPaidWallet()
+                        refreshCheckoutReadiness()
                     } else {
                         sessionToken = null
                         accountHash = null
+                        checkoutReady = false
                         onVerifiedGrants(emptyMap())
                         statusMessage = "Billing server authentication unavailable."
                     }
+                }
+            }
+        }
+    }
+
+    private fun refreshCheckoutReadiness() {
+        val session = sessionToken ?: return
+        checkoutReady = false
+        worker.execute {
+            val response = runCatching { getJson("/checkout-ready", session) }.getOrNull()
+            activity.runOnUiThread {
+                if (closed || sessionToken != session) return@runOnUiThread
+                checkoutReady = response?.optBoolean("checkoutReady", false) == true
+                if (!checkoutReady) {
+                    statusMessage = "Checkout unavailable until server verification is enabled."
                 }
             }
         }
@@ -215,7 +235,7 @@ class CoinPriceCatalog(
         // NOT an already-enabled paid-item wallet. Wallet spending has a
         // separate server kill switch and must not deadlock first-time purchases.
         !closed && stagingEnabled && client.isReady && sessionToken != null &&
-            accountHash != null && !processing &&
+            accountHash != null && checkoutReady && !processing &&
             productDetails[productId]?.oneTimePurchaseOfferDetailsList
                 ?.firstOrNull()?.offerToken?.isNotBlank() == true
 
@@ -438,6 +458,7 @@ class CoinPriceCatalog(
         requestVersion++
         sessionToken = null
         accountHash = null
+        checkoutReady = false
         worker.shutdownNow()
         client.endConnection()
     }
