@@ -69,6 +69,7 @@ internal fun StyleLabItemCard(
     onAction: () -> Unit,
     paidBalance: Int? = null,
     paidWalletLoading: Boolean = false,
+    legacyOwnershipLoaded: Boolean = false,
     onPaidAction: (() -> Unit)? = null
 ) {
     val ar = language == "ar"
@@ -115,7 +116,7 @@ internal fun StyleLabItemCard(
         if (!owned && price > 0 && paidBalance != null && onPaidAction != null) {
             OutlinedButton(
                 onClick = onPaidAction,
-                enabled = paidBalance >= price && !paidWalletLoading,
+                enabled = legacyOwnershipLoaded && paidBalance >= price && !paidWalletLoading,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp)
             ) {
                 Text(if (ar) "شراء برصيد مدفوع" else "Use purchased coins",
@@ -145,6 +146,11 @@ internal fun ShopScreen(
     val paidBalance = coinPriceCatalog?.paidWalletCoins
     val paidOwned = coinPriceCatalog?.paidOwnedItemIds.orEmpty()
     val paidWalletLoading = coinPriceCatalog?.paidWalletLoading == true
+    // Before spending real-money coins, let Play Games finish restoring
+    // previous purchases made with earned/free coins on another device.
+    // These legacy items remain locally/cloud owned; they are never re-billed
+    // or promoted into the paid-only wallet.
+    val legacyOwnershipLoaded = state.cloudStatus == "synced"
     var pendingPaidItem by remember { mutableStateOf<Triple<String, String, Int>?>(null) }
     val prices = SnakeSkin.entries.associateWith { it.priceCoins }
     var previewSkin by remember(state.settings.skin) { mutableStateOf(state.settings.skin) }
@@ -250,6 +256,7 @@ internal fun ShopScreen(
                                         else { previewSkin = skin; pendingBuy = skin }
                                     },
                                     paidBalance = paidBalance, paidWalletLoading = paidWalletLoading,
+                                    legacyOwnershipLoaded = legacyOwnershipLoaded,
                                     onPaidAction = {
                                         pendingPaidItem = Triple("skin_" + skin.key,
                                             tx(lang, skin.key), skin.priceCoins)
@@ -280,6 +287,7 @@ internal fun ShopScreen(
                                         else { previewSkin = skin; pendingBuy = skin }
                                     },
                                     paidBalance = paidBalance, paidWalletLoading = paidWalletLoading,
+                                    legacyOwnershipLoaded = legacyOwnershipLoaded,
                                     onPaidAction = {
                                         pendingPaidItem = Triple("skin_" + skin.key,
                                             tx(lang, skin.key), skin.priceCoins)
@@ -307,6 +315,7 @@ internal fun ShopScreen(
                                         if (owned) onEquipHead(head) else pendingHeadBuy = head
                                     },
                                     paidBalance = paidBalance, paidWalletLoading = paidWalletLoading,
+                                    legacyOwnershipLoaded = legacyOwnershipLoaded,
                                     onPaidAction = {
                                         pendingPaidItem = Triple("head_" + head.key,
                                             tx(lang, "head_" + head.key), head.priceCoins)
@@ -335,6 +344,7 @@ internal fun ShopScreen(
                                         if (owned) onEquipBody(body) else pendingBodyBuy = body
                                     },
                                     paidBalance = paidBalance, paidWalletLoading = paidWalletLoading,
+                                    legacyOwnershipLoaded = legacyOwnershipLoaded,
                                     onPaidAction = {
                                         pendingPaidItem = Triple("body_" + body.key,
                                             tx(lang, "body_" + body.key), body.priceCoins)
@@ -551,7 +561,7 @@ internal fun ShopScreen(
             confirmButton = {
                 TextButton(
                     enabled = paidBalance != null && paidBalance >= pending.third &&
-                        !paidWalletLoading,
+                        !paidWalletLoading && legacyOwnershipLoaded,
                     onClick = {
                         coinPriceCatalog?.buyPaidItem(pending.first)
                         pendingPaidItem = null
