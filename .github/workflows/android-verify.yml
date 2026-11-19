@@ -11,6 +11,32 @@ permissions:
   contents: read
 
 jobs:
+  billing-backend:
+    name: Billing backend and gateway unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install billing service requirements
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r backend/requirements.txt -r billing-gateway/requirements.txt
+
+      - name: Verify private billing backend rules
+        working-directory: backend
+        run: python -m unittest discover -s tests -p 'test_*.py' -v
+
+      - name: Verify App Check gateway policy
+        working-directory: billing-gateway
+        run: python -m unittest discover -s tests -p 'test_*.py' -v
+
   verify:
     name: Debug tests and unsigned release bundle
     runs-on: ubuntu-latest
