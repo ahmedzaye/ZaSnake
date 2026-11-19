@@ -32,6 +32,10 @@ SCOPES = ["https://www.googleapis.com/auth/androidpublisher"]
 # Explicitly off by default. Enabling requires refund reconciliation, server
 # authoritative spending, account migration, load tests and abuse controls.
 ATOMIC_BILLING_ENABLED = os.environ.get("ATOMIC_BILLING_ENABLED", "false").lower() == "true"
+# Independent checkout permission. Operators enable this only after Play API
+# permissions, App Check, claim/consume and refund reconciliation pass E2E.
+# Existing purchased tokens can still be claimed if checkout is paused.
+CHECKOUT_VERIFIED_ENABLED = os.environ.get("CHECKOUT_VERIFIED_ENABLED", "false").lower() == "true"
 # Additional independent kill switches. Never enable until legacy ownership is
 # reconciled and refund/RTDN recovery plus abuse controls are operational.
 PAID_SPENDING_ENABLED = os.environ.get("PAID_SPENDING_ENABLED", "false").lower() == "true"
@@ -118,12 +122,12 @@ def create_session():
 
 @app.get("/checkout-ready")
 def checkout_ready():
-    """Fail-closed checkout gate for authenticated Play Games players.
+    """Fail closed until Play verification and the checkout operator switch pass.
 
-    Wallet spending has a separate kill switch; do not block coin-pack
-    purchases merely because cosmetic spending is not enabled yet.
+    Wallet spending has a separate kill switch. Checkout is enabled only after
+    Play API credentials, App Check, claim/consume and refund monitoring work.
     """
-    if not ATOMIC_BILLING_ENABLED:
+    if not ATOMIC_BILLING_ENABLED or not CHECKOUT_VERIFIED_ENABLED:
         return failure("billing_disabled", 503)
     player_id = session_player()
     if not player_id:
