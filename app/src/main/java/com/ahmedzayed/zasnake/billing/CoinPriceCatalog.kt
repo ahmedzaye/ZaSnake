@@ -6,6 +6,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.ahmedzayed.zasnake.BuildConfig
 import com.ahmedzayed.zasnake.game.COIN_PACKAGES
+import com.ahmedzayed.zasnake.game.SnakeSkin
+import com.ahmedzayed.zasnake.game.SnakeHeadStyle
+import com.ahmedzayed.zasnake.game.SnakeBodyType
+import com.ahmedzayed.zasnake.game.GameTheme
 import com.ahmedzayed.zasnake.platform.PlayGamesBridge
 import com.android.billingclient.api.BillingClient
 import com.android.billingclient.api.BillingClientStateListener
@@ -33,7 +37,8 @@ import java.util.concurrent.Executors
 class CoinPriceCatalog(
     private val activity: Activity,
     private val playGames: PlayGamesBridge,
-    private val onVerifiedGrants: (Map<String, Int>) -> Unit
+    private val onVerifiedGrants: (Map<String, Int>) -> Unit,
+    private val onVerifiedPaidItems: (Set<String>) -> Unit
 ) {
     enum class State { IDLE, LOADING, READY, UNAVAILABLE }
 
@@ -44,8 +49,24 @@ class CoinPriceCatalog(
     var statusMessage by mutableStateOf("Purchases remain disabled until server verification is tested.")
         private set
 
+    /** Paid coins are never added to PlayerStats.coins or persisted in Saved Games. */
+    var paidWalletCoins by mutableStateOf<Int?>(null)
+        private set
+    var paidOwnedItemIds by mutableStateOf<Set<String>>(emptySet())
+        private set
+    var paidWalletLoading by mutableStateOf(false)
+        private set
+    var paidWalletStatus by mutableStateOf("")
+        private set
+
     private val worker = Executors.newSingleThreadExecutor()
     private val allowedIds = COIN_PACKAGES.map { it.productId }.toSet()
+    private val allowedPaidItemIds: Set<String> = (
+        SnakeSkin.entries.filterNot { it.isFree }.map { "skin_" + it.key } +
+        SnakeHeadStyle.entries.filterNot { it.isFree }.map { "head_" + it.key } +
+        SnakeBodyType.entries.filterNot { it.isFree }.map { "body_" + it.key } +
+        GameTheme.entries.filterNot { it.isFree }.map { "theme_" + it.key }
+    ).toSet()
     private val productDetails = mutableMapOf<String, ProductDetails>()
     private var closed = false
     private var connecting = false
@@ -87,6 +108,7 @@ class CoinPriceCatalog(
             queryPrices()
             ensureSession()
             resumePendingPurchases()
+            refreshPaidWallet()
             return
         }
         state = State.LOADING
@@ -176,6 +198,7 @@ class CoinPriceCatalog(
                         statusMessage = "Billing staging session authenticated."
                         loadGrants()
                         resumePendingPurchases()
+                        refreshPaidWallet()
                     } else {
                         sessionToken = null
                         accountHash = null
@@ -189,7 +212,8 @@ class CoinPriceCatalog(
 
     fun canBuy(productId: String): Boolean =
         !closed && stagingEnabled && client.isReady && sessionToken != null &&
-            accountHash != null && !processing &&
+            accountHash != null && paidWalletCoins != null && !paidWalletLoading &&
+            !processing &&
             productDetails[productId]?.oneTimePurchaseOfferDetailsList
                 ?.firstOrNull()?.offerToken?.isNotBlank() == true
 
@@ -264,6 +288,7 @@ class CoinPriceCatalog(
                 statusMessage = if (ok) "Purchases verified by the server."
                     else "Purchase verification delayed; retry from the shop."
                 loadGrants()
+                refreshPaidWallet()
             }
         }
     }
@@ -287,6 +312,75 @@ class CoinPriceCatalog(
             }
             activity.runOnUiThread {
                 if (!closed && response != null) onVerifiedGrants(verified)
+            }
+        }
+    }
+
+    /** Only an authenticated server response can update the paid-wallet view. */
+    private fun acceptPaidWallet(snapshot: JSONObject?) {
+        val amount = snapshot?.optInt("spendablePaidCoins", -1) ?: -1
+        val records = snapshot?.optJSONArray("ownedPaidItemIds")
+        val ids = mutableSetOf<String>()
+        var valid = amount >= 0 && records != null &&
+            records.length() <= allowedPaidItemIds.size
+        if (valid && records != null) {
+            for (i in 0 until records.length()) {
+                val itemId = records.optString(i, "")
+                if (itemId !in allowedPaidItemIds || !ids.add(itemId)) {
+                    valid = false
+                    break
+                }
+            }
+        }
+        if (!valid) {
+            paidWalletCoins = null
+            paidOwnedItemIds = emptySet()
+            onVerifiedPaidItems(emptySet())
+            paidWalletStatus = "Paid wallet unavailable; try again."
+            return
+        }
+        paidWalletCoins = amount
+        paidOwnedItemIds = ids
+        onVerifiedPaidItems(ids)
+        paidWalletStatus = ""
+    }
+
+    fun refreshPaidWallet() {
+        if (closed || !stagingEnabled || paidWalletLoading) return
+        val session = sessionToken ?: run { ensureSession(); return }
+        paidWalletLoading = true
+        worker.execute {
+            val response = runCatching { getJson("/paid-wallet", session) }.getOrNull()
+            activity.runOnUiThread {
+                if (closed || sessionToken != session) return@runOnUiThread
+                paidWalletLoading = false
+                acceptPaidWallet(response)
+            }
+        }
+    }
+
+    /** Spend only on the trusted server; never debit free coins in the app. */
+    fun buyPaidItem(itemId: String) {
+        val session = sessionToken ?: return
+        if (closed || !stagingEnabled || itemId !in allowedPaidItemIds ||
+            paidWalletCoins == null || itemId in paidOwnedItemIds ||
+            paidWalletLoading) return
+        paidWalletLoading = true
+        worker.execute {
+            // The server owns item prices and the idempotent transaction.
+            val response = runCatching {
+                postJson("/paid-wallet/items", JSONObject().put("itemId", itemId), session)
+            }.getOrNull()
+            // Read-after-write also resolves ambiguous timeouts safely.
+            val wallet = runCatching { getJson("/paid-wallet", session) }.getOrNull()
+            activity.runOnUiThread {
+                if (closed || sessionToken != session) return@runOnUiThread
+                paidWalletLoading = false
+                acceptPaidWallet(wallet)
+                paidWalletStatus = if (itemId in paidOwnedItemIds &&
+                    (response == null || response.optString("itemId") == itemId))
+                    "Item purchased with paid coins."
+                else "Purchase not confirmed. Refresh your paid wallet."
             }
         }
     }

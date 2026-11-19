@@ -103,9 +103,11 @@ class MainActivity : ComponentActivity() {
         // may inspect the future Billing staging UI; release never creates
         // BillingClient, requests Play prices, or resumes purchase flows.
         if (decision.band == AgeBand.ADULT && (BuildConfig.DEBUG || BuildConfig.BILLING_INTEGRATION_ENABLED)) {
-            coinPriceCatalog = CoinPriceCatalog(this, checkNotNull(playGamesBridge)) { grants ->
-                gameViewModel.applyVerifiedPurchaseGrants(grants)
-            }
+            coinPriceCatalog = CoinPriceCatalog(
+                this, checkNotNull(playGamesBridge),
+                onVerifiedGrants = { grants -> gameViewModel.applyVerifiedPurchaseGrants(grants) },
+                onVerifiedPaidItems = { ids -> gameViewModel.applyVerifiedPaidItemIds(ids) }
+            )
         }
         if (olderUser) {
             rewardedAds = RewardedAds(this, decision.band)
