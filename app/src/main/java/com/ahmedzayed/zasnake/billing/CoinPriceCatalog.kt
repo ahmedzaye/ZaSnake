@@ -72,6 +72,11 @@ class CoinPriceCatalog(
     private var connecting = false
     private var requestVersion = 0
     private var sessionToken: String? = null
+    private var sessionExpiresAtMillis: Long = 0L
+
+    private val sessionValid: Boolean
+        get() = sessionToken != null &&
+            System.currentTimeMillis() < sessionExpiresAtMillis - 30_000L
     // Server kill switch is separate from the paid cosmetics wallet.
     // Never open Google Play checkout without an authenticated readiness reply.
     private var checkoutReady by mutableStateOf(false)
@@ -178,7 +183,12 @@ class CoinPriceCatalog(
     }
 
     private fun ensureSession() {
-        if (closed || !stagingEnabled || authBusy || sessionToken != null) return
+        if (closed || !stagingEnabled || authBusy || sessionValid) return
+        // An expired server session must never authorize a new Play checkout.
+        sessionToken = null
+        accountHash = null
+        checkoutReady = false
+        sessionExpiresAtMillis = 0L
         authBusy = true
         playGames.requestServerAuthCode(BuildConfig.PGS_WEB_CLIENT_ID) { code ->
             if (closed) return@requestServerAuthCode
@@ -194,10 +204,13 @@ class CoinPriceCatalog(
                 activity.runOnUiThread {
                     if (closed) return@runOnUiThread
                     authBusy = false
+                    val lifetime = response?.optInt("expiresInSeconds", 0) ?: 0
                     sessionToken = response?.optString("sessionToken")?.takeIf(String::isNotBlank)
+                    sessionExpiresAtMillis = if (lifetime in 60..3600)
+                        System.currentTimeMillis() + lifetime * 1000L else 0L
                     accountHash = response?.optString("obfuscatedAccountId")
                         ?.takeIf { it.matches(Regex("[0-9a-f]{64}")) }
-                    if (sessionToken != null && accountHash != null) {
+                    if (sessionValid && accountHash != null) {
                         statusMessage = "Billing staging session authenticated."
                         loadGrants()
                         resumePendingPurchases()
@@ -234,7 +247,7 @@ class CoinPriceCatalog(
         // Checkout needs a valid Play Games session and Play's product offer,
         // NOT an already-enabled paid-item wallet. Wallet spending has a
         // separate server kill switch and must not deadlock first-time purchases.
-        !closed && stagingEnabled && client.isReady && sessionToken != null &&
+        !closed && stagingEnabled && client.isReady && sessionValid &&
             accountHash != null && checkoutReady && !processing &&
             productDetails[productId]?.oneTimePurchaseOfferDetailsList
                 ?.firstOrNull()?.offerToken?.isNotBlank() == true
@@ -266,7 +279,7 @@ class CoinPriceCatalog(
     /** Re-query after a restart and after returning from Play's purchase screen. */
     fun resumePendingPurchases() {
         if (closed || !stagingEnabled || !client.isReady) return
-        if (sessionToken == null) {
+        if (!sessionValid) {
             ensureSession()
             return
         }
@@ -383,6 +396,7 @@ class CoinPriceCatalog(
 
     /** Spend only on the trusted server; never debit free coins in the app. */
     fun buyPaidItem(itemId: String) {
+        if (!sessionValid) { ensureSession(); return }
         val session = sessionToken ?: return
         if (closed || !stagingEnabled || itemId !in allowedPaidItemIds ||
             paidWalletCoins == null || itemId in paidOwnedItemIds ||
@@ -457,6 +471,7 @@ class CoinPriceCatalog(
         closed = true
         requestVersion++
         sessionToken = null
+        sessionExpiresAtMillis = 0L
         accountHash = null
         checkoutReady = false
         worker.shutdownNow()
