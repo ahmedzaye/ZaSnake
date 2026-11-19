@@ -83,7 +83,7 @@ class MainActivity : ComponentActivity() {
         // Firebase App Check is exclusively used by the disabled paid-billing
         // gateway. Do not initialize Firebase at all in this no-IAP release.
         // The Debug staging variant retains the experimental configuration.
-        if (decision.band == AgeBand.ADULT && BuildConfig.DEBUG) {
+        if (decision.band == AgeBand.ADULT && (BuildConfig.DEBUG || BuildConfig.BILLING_INTEGRATION_ENABLED)) {
             runCatching {
                 checkNotNull(FirebaseApp.initializeApp(this)) {
                     "Firebase configuration missing"
@@ -102,7 +102,7 @@ class MainActivity : ComponentActivity() {
         // This v4 update does not offer in-app purchases. Only debug builds
         // may inspect the future Billing staging UI; release never creates
         // BillingClient, requests Play prices, or resumes purchase flows.
-        if (decision.band == AgeBand.ADULT && BuildConfig.DEBUG) {
+        if (decision.band == AgeBand.ADULT && (BuildConfig.DEBUG || BuildConfig.BILLING_INTEGRATION_ENABLED)) {
             coinPriceCatalog = CoinPriceCatalog(this, checkNotNull(playGamesBridge)) { grants ->
                 gameViewModel.applyVerifiedPurchaseGrants(grants)
             }

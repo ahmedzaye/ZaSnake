@@ -75,7 +75,7 @@ class CoinPriceCatalog(
         .build()
 
     private val stagingEnabled: Boolean
-        get() = BuildConfig.DEBUG && BuildConfig.BILLING_INTEGRATION_ENABLED &&
+        get() = BuildConfig.BILLING_INTEGRATION_ENABLED &&
             BuildConfig.PGS_WEB_CLIENT_ID.endsWith(".apps.googleusercontent.com") &&
             BuildConfig.BILLING_BASE_URL.startsWith("https://") &&
             BuildConfig.BILLING_BASE_URL.endsWith(".run.app")

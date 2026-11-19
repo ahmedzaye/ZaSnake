@@ -5,6 +5,8 @@ ALLOWED_ROUTES = {
     ("POST", "/session"),
     ("POST", "/claim"),
     ("GET", "/grants"),
+    ("GET", "/paid-wallet"),
+    ("POST", "/paid-wallet/items"),
 }
 MAX_REQUEST_BYTES = 8192
 

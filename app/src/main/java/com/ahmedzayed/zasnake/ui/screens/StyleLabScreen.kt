@@ -157,7 +157,7 @@ internal fun ShopScreen(
             ChoiceChip(tx(lang, "shop_skins"), tab == "skins") { tab = "skins" }
             ChoiceChip(tx(lang, "shop_themes"), tab == "themes") { tab = "themes" }
             // Keep paid coin packages visible only in debug, as in release v4.
-            if (com.ahmedzayed.zasnake.BuildConfig.DEBUG) {
+            if (com.ahmedzayed.zasnake.BuildConfig.DEBUG || com.ahmedzayed.zasnake.BuildConfig.BILLING_INTEGRATION_ENABLED) {
                 ChoiceChip(tx(lang, "shop_coins"), tab == "coins") { tab = "coins" }
             }
         }

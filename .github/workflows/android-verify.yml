@@ -76,12 +76,13 @@ jobs:
               if e.tag in ("uses-permission", "uses-permission-sdk-23")
           }
           forbidden = {
-              "com.android.vending.BILLING",
               "com.google.android.gms.permission.AD_ID",
               "android.permission.ACCESS_ADSERVICES_AD_ID",
               "android.permission.ACCESS_ADSERVICES_ATTRIBUTION",
               "android.permission.ACCESS_ADSERVICES_TOPICS",
           }
+          if "com.android.vending.BILLING" not in perms:
+              raise SystemExit("v5 Billing permission missing")
           present = perms & forbidden
           if present:
               raise SystemExit("Forbidden v4 release permission(s): " + str(sorted(present)))
@@ -90,7 +91,7 @@ jobs:
           bundles = list(pathlib.Path("app/build/outputs/bundle/release").glob("*.aab"))
           if not bundles:
               raise SystemExit("Release AAB was not produced")
-          print("v4 release manifest passed; unsigned bundle generated")
+          print("v5 release manifest passed; unsigned bundle generated")
           PY
 
       # For verification only: unsigned artifacts MUST NOT be uploaded to Play.

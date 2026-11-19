@@ -23,10 +23,14 @@ class PolicyTests(unittest.TestCase):
                 private_service_url(value)
 
     def test_allowed_routes(self):
-        for method, path in (("POST", "/session"), ("POST", "/claim"), ("GET", "/grants")):
+        for method, path in (("POST", "/session"), ("POST", "/claim"), ("GET", "/grants"),
+                             ("GET", "/paid-wallet"),
+                             ("POST", "/paid-wallet/items")):
             self.assertTrue(route_allowed(method, path))
         for method, path in (("GET", "/session"), ("GET", "/claim"),
                              ("POST", "/grants"), ("GET", "/admin"),
+                             ("POST", "/paid-wallet"),
+                             ("GET", "/paid-wallet/items"),
                              ("POST", "/claim/extra"), ("DELETE", "/session")):
             self.assertFalse(route_allowed(method, path))
 
