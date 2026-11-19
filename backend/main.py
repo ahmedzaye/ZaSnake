@@ -116,6 +116,21 @@ def create_session():
                     "expiresInSeconds": 3600})
 
 
+@app.get("/checkout-ready")
+def checkout_ready():
+    """Fail-closed checkout gate for authenticated Play Games players.
+
+    Wallet spending has a separate kill switch; do not block coin-pack
+    purchases merely because cosmetic spending is not enabled yet.
+    """
+    if not ATOMIC_BILLING_ENABLED:
+        return failure("billing_disabled", 503)
+    player_id = session_player()
+    if not player_id:
+        return failure("not_authenticated", 401)
+    return jsonify({"checkoutReady": True})
+
+
 @app.get("/grants")
 def grants():
     if not ATOMIC_BILLING_ENABLED:
