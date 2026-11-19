@@ -127,7 +127,9 @@ def checkout_ready():
     Wallet spending has a separate kill switch. Checkout is enabled only after
     Play API credentials, App Check, claim/consume and refund monitoring work.
     """
-    if not ATOMIC_BILLING_ENABLED or not CHECKOUT_VERIFIED_ENABLED:
+    # Never accept a cash purchase while the cosmetic wallet is unusable.
+    # Existing purchases can still be claimed during an emergency spending pause.
+    if not CHECKOUT_VERIFIED_ENABLED or not paid_spending_ready():
         return failure("billing_disabled", 503)
     player_id = session_player()
     if not player_id:
