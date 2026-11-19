@@ -24,7 +24,7 @@ class PolicyTests(unittest.TestCase):
 
     def test_allowed_routes(self):
         for method, path in (("POST", "/session"), ("POST", "/claim"), ("GET", "/grants"),
-                             ("GET", "/paid-wallet"),
+                             ("GET", "/paid-wallet"), ("GET", "/checkout-ready"),
                              ("POST", "/paid-wallet/items")):
             self.assertTrue(route_allowed(method, path))
         for method, path in (("GET", "/session"), ("GET", "/claim"),
