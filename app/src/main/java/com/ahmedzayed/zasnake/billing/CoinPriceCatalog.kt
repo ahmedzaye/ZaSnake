@@ -211,9 +211,11 @@ class CoinPriceCatalog(
     }
 
     fun canBuy(productId: String): Boolean =
+        // Checkout needs a valid Play Games session and Play's product offer,
+        // NOT an already-enabled paid-item wallet. Wallet spending has a
+        // separate server kill switch and must not deadlock first-time purchases.
         !closed && stagingEnabled && client.isReady && sessionToken != null &&
-            accountHash != null && paidWalletCoins != null && !paidWalletLoading &&
-            !processing &&
+            accountHash != null && !processing &&
             productDetails[productId]?.oneTimePurchaseOfferDetailsList
                 ?.firstOrNull()?.offerToken?.isNotBlank() == true
 
