@@ -93,6 +93,35 @@ class PaidItemEntitlementTests(unittest.TestCase):
         self.assertEqual(wallet["ownedPaidItemIds"], ["skin_egypt"])
         self.assertFalse(wallet["paidEntitlementsSuspended"])
 
+    def test_legacy_veto_blocks_spending_in_same_transaction(self):
+        from paid_item_entitlements import _purchase_impl
+        transaction = MagicMock()
+        wallet_ref, legacy_ref = MagicMock(), MagicMock()
+        wallet_ref.get.return_value.exists = True
+        wallet_ref.get.return_value.to_dict.return_value = {
+            "grants": {"p" * 64: 1000}, "spends": {}, "revoked": {}
+        }
+        legacy_ref.get.return_value.exists = True
+        legacy_ref.get.return_value.to_dict.return_value = {
+            "schemaVersion": 1, "ownedItemIds": ["skin_egypt"]
+        }
+        with self.assertRaisesRegex(WalletError, "already_owned_legacy"):
+            _purchase_impl(transaction, wallet_ref, legacy_ref, "skin_egypt")
+        transaction.set.assert_not_called()
+
+    def test_unsynced_legacy_veto_blocks_spending(self):
+        from paid_item_entitlements import _purchase_impl
+        transaction = MagicMock()
+        wallet_ref, legacy_ref = MagicMock(), MagicMock()
+        wallet_ref.get.return_value.exists = True
+        wallet_ref.get.return_value.to_dict.return_value = {
+            "grants": {"p" * 64: 1000}, "spends": {}, "revoked": {}
+        }
+        legacy_ref.get.return_value.exists = False
+        with self.assertRaisesRegex(WalletError, "legacy_sync_required"):
+            _purchase_impl(transaction, wallet_ref, legacy_ref, "skin_egypt")
+        transaction.set.assert_not_called()
+
     def test_atomic_duplicate_does_not_write_again(self):
         # Test the separated transaction body with a fake transaction,
         # without relying on decorator internals or live GCP access.
@@ -105,7 +134,12 @@ class PaidItemEntitlementTests(unittest.TestCase):
             "spends": {"item:skin_egypt": 180},
             "revoked": {}
         }
-        result = _purchase_impl(transaction, ref, "skin_egypt")
+        legacy_ref = MagicMock()
+        legacy_ref.get.return_value.exists = True
+        legacy_ref.get.return_value.to_dict.return_value = {
+            "schemaVersion": 1, "ownedItemIds": [],
+        }
+        result = _purchase_impl(transaction, ref, legacy_ref, "skin_egypt")
         self.assertEqual(result["chargedPaidCoins"], 0)
         self.assertTrue(result["alreadyOwnedInPaidWallet"])
         transaction.set.assert_not_called()
