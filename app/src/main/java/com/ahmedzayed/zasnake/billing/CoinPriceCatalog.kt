@@ -80,6 +80,8 @@ class CoinPriceCatalog(
     // Server kill switch is separate from the paid cosmetics wallet.
     // Never open Google Play checkout without an authenticated readiness reply.
     private var checkoutReady by mutableStateOf(false)
+    var legacyOwnershipReady by mutableStateOf(false)
+        private set
     private var pendingLegacyOwnership: Set<String>? = null
     private var lastSubmittedLegacyOwnership: Pair<String, Set<String>>? = null
     private var accountHash: String? = null
@@ -191,6 +193,8 @@ class CoinPriceCatalog(
         sessionToken = null
         accountHash = null
         checkoutReady = false
+        legacyOwnershipReady = false
+        lastSubmittedLegacyOwnership = null
         sessionExpiresAtMillis = 0L
         authBusy = true
         playGames.requestServerAuthCode(BuildConfig.PGS_WEB_CLIENT_ID) { code ->
@@ -239,14 +243,25 @@ class CoinPriceCatalog(
     fun reportLegacyOwnership(itemIds: Set<String>) {
         if (closed || !stagingEnabled) return
         if (!itemIds.all { it in allowedPaidItemIds }) return
-        pendingLegacyOwnership = itemIds.toSet()
+        val newIds = itemIds.toSet()
+        if (pendingLegacyOwnership != newIds) {
+            legacyOwnershipReady = false
+            checkoutReady = false
+            lastSubmittedLegacyOwnership = null
+        }
+        pendingLegacyOwnership = newIds
         if (sessionValid) submitLegacyOwnershipIfReady() else ensureSession()
     }
 
     private fun submitLegacyOwnershipIfReady() {
         val session = sessionToken ?: return
         val ids = pendingLegacyOwnership ?: return
-        if (!sessionValid || lastSubmittedLegacyOwnership == (session to ids)) return
+        if (!sessionValid) return
+        if (lastSubmittedLegacyOwnership == (session to ids)) {
+            legacyOwnershipReady = true
+            return
+        }
+        legacyOwnershipReady = false
         worker.execute {
             val array = org.json.JSONArray()
             ids.sorted().forEach(array::put)
@@ -256,8 +271,10 @@ class CoinPriceCatalog(
             }.getOrNull()
             activity.runOnUiThread {
                 if (closed || sessionToken != session) return@runOnUiThread
-                if (reply?.optBoolean("legacyOwnershipReady", false) == true) {
+                if (reply?.optBoolean("legacyOwnershipReady", false) == true &&
+                    pendingLegacyOwnership == ids) {
                     lastSubmittedLegacyOwnership = session to ids
+                    legacyOwnershipReady = true
                     refreshCheckoutReadiness()
                 } else {
                     checkoutReady = false
@@ -287,7 +304,7 @@ class CoinPriceCatalog(
         // NOT an already-enabled paid-item wallet. Wallet spending has a
         // separate server kill switch and must not deadlock first-time purchases.
         !closed && stagingEnabled && client.isReady && sessionValid &&
-            accountHash != null && checkoutReady && !processing &&
+            accountHash != null && checkoutReady && legacyOwnershipReady && !processing &&
             productDetails[productId]?.oneTimePurchaseOfferDetailsList
                 ?.firstOrNull()?.offerToken?.isNotBlank() == true
 
@@ -457,7 +474,7 @@ class CoinPriceCatalog(
     fun buyPaidItem(itemId: String) {
         if (!sessionValid) { ensureSession(); return }
         val session = sessionToken ?: return
-        if (closed || !stagingEnabled || itemId !in allowedPaidItemIds ||
+        if (closed || !stagingEnabled || !legacyOwnershipReady || itemId !in allowedPaidItemIds ||
             paidWalletCoins == null || itemId in paidOwnedItemIds ||
             paidWalletLoading) return
         paidWalletLoading = true
@@ -533,6 +550,7 @@ class CoinPriceCatalog(
         sessionExpiresAtMillis = 0L
         accountHash = null
         checkoutReady = false
+        legacyOwnershipReady = false
         pendingLegacyOwnership = null
         lastSubmittedLegacyOwnership = null
         worker.shutdownNow()
