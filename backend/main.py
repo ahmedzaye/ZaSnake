@@ -19,6 +19,7 @@ import requests
 from purchase_validation import validate_product_purchase_v2, PurchaseValidationError
 from atomic_wallet_settlement import finalize_consumed_purchase, current_net_grants
 from paid_item_entitlements import purchase_paid_item_staging, paid_item_wallet_snapshot_staging
+from legacy_ownership import register_legacy_veto, legacy_registered
 from wallet_repository import PREMIUM_ITEM_PRICES
 from wallet_rules import WalletError
 
@@ -134,6 +135,11 @@ def checkout_ready():
     player_id = session_player()
     if not player_id:
         return failure("not_authenticated", 401)
+    try:
+        if not legacy_registered(db, player_id):
+            return failure("legacy_sync_required", 409)
+    except Exception:
+        return failure("legacy_ownership_unavailable", 503)
     return jsonify({"checkoutReady": True})
 
 
@@ -246,6 +252,26 @@ def claim():
 
 
 
+@app.post("/legacy-ownership")
+def register_legacy_ownership():
+    """Authenticated, additive spend veto; reports cannot grant paid items."""
+    player_id = session_player()
+    if not player_id:
+        return failure("not_authenticated", 401)
+    if not request.is_json:
+        return failure("json_required", 415)
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict) or set(payload) != {"ownedItemIds"}:
+        return failure("invalid_legacy_ownership", 400)
+    try:
+        result = register_legacy_veto(db, player_id, payload["ownedItemIds"])
+    except WalletError:
+        return failure("invalid_legacy_ownership", 400)
+    except Exception:
+        return failure("legacy_ownership_unavailable", 503)
+    return jsonify(result)
+
+
 @app.get("/paid-wallet")
 def paid_wallet():
     """Authenticated read of *paid-only* wallet, NOT the local earned coin balance.
@@ -288,6 +314,10 @@ def purchase_paid_wallet_item():
     try:
         result = purchase_paid_item_staging(db, player_id, item_id)
     except WalletError as error:
+        if str(error) == "already_owned_legacy":
+            return failure("already_owned_legacy", 409)
+        if str(error) == "legacy_sync_required":
+            return failure("legacy_sync_required", 409)
         if str(error) == "insufficient_funds":
             return failure("insufficient_paid_balance", 409)
         return failure("paid_item_unavailable", 409)
