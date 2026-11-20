@@ -203,7 +203,8 @@ fun ZaSnakeApp(
     coinPriceCatalog: CoinPriceCatalog?,
     privacyOptionsRequired: Boolean,
     onPrivacyOptions: () -> Unit,
-    onExitApp: () -> Unit
+    onExitApp: () -> Unit,
+    onEditAge: () -> Unit
 ) {
     val modelState by viewModel.uiState
     // Automatic tracks Android changes; manual choices take priority without a restart.
@@ -393,6 +394,14 @@ fun ZaSnakeApp(
                                 AppScreen.SETTINGS -> SettingsScreen(state, onBack = viewModel::navigateHomeFromSubscreen,
                                     onSettingsChange = viewModel::changeSettings,
                                     onUpdatePlayerName = viewModel::updatePlayerName,
+                                    onEditAge = onEditAge,
+                                    onChangePlayGamesAccount = {
+                                        // PGS v2 owns sign-out/account choice in Android's settings.
+                                        // This action never fakes an SDK sign-out.
+                                        activity?.startActivity(android.content.Intent(
+                                            android.provider.Settings.ACTION_SETTINGS
+                                        ))
+                                    },
                                     privacyOptionsRequired = privacyOptionsRequired,
                                     onPrivacyOptions = onPrivacyOptions,
                                     playGamesAllowed = playGamesBridge.isAllowedByAge(),
