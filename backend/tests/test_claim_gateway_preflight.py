@@ -55,7 +55,8 @@ class ClaimGatewayTests(unittest.TestCase):
             unauthenticated = self.client.get("/checkout-ready")
         self.assertEqual(unauthenticated.status_code, 401)
 
-        with patch.object(self.server, "session_player", return_value="player1"):
+        with (patch.object(self.server, "session_player", return_value="player1"),
+              patch.object(self.server, "legacy_registered", return_value=True)):
             allowed = self.client.get("/checkout-ready")
         self.assertEqual(allowed.status_code, 200)
         self.assertEqual(allowed.get_json(), {"checkoutReady": True})
