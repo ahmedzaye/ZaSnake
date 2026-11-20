@@ -201,7 +201,8 @@ class CoinPriceCatalog(
             if (closed) return@requestServerAuthCode
             if (code.isNullOrBlank()) {
                 authBusy = false
-                statusMessage = "Play Games server sign-in unavailable."
+                statusMessage = "Play Games server sign-in unavailable (" +
+                    playGames.serverAuthFailureReason + ")."
                 return@requestServerAuthCode
             }
             worker.execute {
