@@ -151,6 +151,31 @@ internal fun ShopScreen(
     // These legacy items remain locally/cloud owned; they are never re-billed
     // or promoted into the paid-only wallet.
     val legacyOwnershipLoaded = state.cloudStatus == "synced"
+    // Only after Play Games has merged existing saves may the app register a
+    // persistent, additive spending veto. Never derive paid grants from it.
+    val legacyItemIds = (
+        state.settings.ownedSkinKeys.filter { key ->
+            SnakeSkin.entries.any { !it.isFree && it.key == key }
+        }.map { "skin_" + it } +
+        state.stats.purchasedSkinKeys.map { "skin_" + it } +
+        state.settings.ownedHeadKeys.filter { key ->
+            SnakeHeadStyle.entries.any { !it.isFree && it.key == key }
+        }.map { "head_" + it } +
+        state.stats.purchasedHeadKeys.map { "head_" + it } +
+        state.settings.ownedBodyKeys.filter { key ->
+            SnakeBodyType.entries.any { !it.isFree && it.key == key }
+        }.map { "body_" + it } +
+        state.stats.purchasedBodyKeys.map { "body_" + it } +
+        state.settings.ownedThemeKeys.filter { key ->
+            GameTheme.entries.any { !it.isFree && it.key == key }
+        }.map { "theme_" + it } +
+        state.stats.purchasedThemeKeys.map { "theme_" + it }
+    ).toSet()
+    LaunchedEffect(legacyOwnershipLoaded, legacyItemIds, coinPriceCatalog) {
+        if (legacyOwnershipLoaded) {
+            coinPriceCatalog?.reportLegacyOwnership(legacyItemIds)
+        }
+    }
     var pendingPaidItem by remember { mutableStateOf<Triple<String, String, Int>?>(null) }
     val prices = SnakeSkin.entries.associateWith { it.priceCoins }
     var previewSkin by remember(state.settings.skin) { mutableStateOf(state.settings.skin) }
