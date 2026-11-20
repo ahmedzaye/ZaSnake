@@ -26,10 +26,23 @@ class PlayGamesBridge(private val activity: Activity, private val enabled: Boole
         "za_snake_pgs_account_binding_v1", Context.MODE_PRIVATE
     )
     private var changedAccount = false
+    private var accountChangePending = false
+
+    /** Freeze all Play Games operations before Android's account switch UI.
+     * A full app restart is required to bind a new platform identity.
+     */
+    fun pauseForAccountChange() {
+        accountChangePending = true
+        pendingConflict = null
+    }
 
     fun hasChangedAccount(): Boolean = changedAccount
 
     private fun validateAccountBeforeSync(onResult: (Boolean) -> Unit) {
+        if (accountChangePending) {
+            onResult(false)
+            return
+        }
         runCatching {
             PlayGames.getPlayersClient(activity).currentPlayer.addOnCompleteListener { task ->
                 val playerId = if (task.isSuccessful)
@@ -116,7 +129,7 @@ class PlayGamesBridge(private val activity: Activity, private val enabled: Boole
     }
 
     fun unlockAchievement(localAchievementId: String) {
-        if (!isConfigured() || changedAccount) return
+        if (!isConfigured() || changedAccount || accountChangePending) return
         val resourceName = when (localAchievementId) {
             "first" -> R.string.pgs_achievement_first
             "apples50" -> R.string.pgs_achievement_apples50
@@ -147,7 +160,7 @@ class PlayGamesBridge(private val activity: Activity, private val enabled: Boole
 
     /** Opens the single Saved Games snapshot with manual conflict detection. */
     fun loadBundle(onResult: (CloudLoadResult) -> Unit) {
-        if (!isConfigured() || changedAccount) {
+        if (!isConfigured() || changedAccount || accountChangePending) {
             onResult(CloudLoadResult.Unavailable)
             return
         }
@@ -191,7 +204,7 @@ class PlayGamesBridge(private val activity: Activity, private val enabled: Boole
 
     /** Writes a bundle. A detected conflict is returned rather than silently overwriting a round. */
     fun saveBundle(json: String, onResult: (Boolean) -> Unit) {
-        if (!isConfigured() || changedAccount) {
+        if (!isConfigured() || changedAccount || accountChangePending) {
             onResult(false)
             return
         }
@@ -226,6 +239,10 @@ class PlayGamesBridge(private val activity: Activity, private val enabled: Boole
     /** Resolves the platform-level snapshot conflict using the selected base, then commits the
      * app-level merged payload. The game-level UI decides which active round is retained. */
     fun resolvePendingConflict(json: String, chooseServer: Boolean, onResult: (Boolean) -> Unit) {
+        if (changedAccount || accountChangePending) {
+            onResult(false)
+            return
+        }
         val conflict = pendingConflict
         if (conflict == null) {
             saveBundle(json, onResult)
