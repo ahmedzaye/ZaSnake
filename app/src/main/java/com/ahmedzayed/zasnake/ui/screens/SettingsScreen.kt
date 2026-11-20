@@ -102,6 +102,8 @@ internal fun SettingsScreen(
     onBack: () -> Unit,
     onSettingsChange: (AppSettings) -> Unit,
     onUpdatePlayerName: (String) -> Boolean,
+    onEditAge: () -> Unit,
+    onChangePlayGamesAccount: () -> Unit,
     privacyOptionsRequired: Boolean,
     onPrivacyOptions: () -> Unit,
     playGamesAllowed: Boolean,
@@ -234,6 +236,24 @@ internal fun SettingsScreen(
                             Text(tx(lang, "player_name_local_hint"), color = Muted, fontSize = 12.sp)
                         }
                     }
+                    item {
+                        SettingsPanel {
+                            SettingHeading(
+                                if (lang == "ar") "بياناتي الشخصية والعمر" else "Personal details and age",
+                                Icons.Rounded.Person
+                            )
+                            Text(
+                                if (lang == "ar")
+                                    "تعديل الاسم متاح بالأعلى. لتصحيح تاريخ الميلاد، أعد إدخاله في شاشة التحقق من العمر. لا نحتفظ بتاريخ ميلادك الكامل."
+                                else
+                                    "Edit your local name above. To correct your birth date, enter it again on the age verification screen. Your full birth date is not stored.",
+                                color = Muted, fontSize = 12.sp, lineHeight = 17.sp
+                            )
+                            OutlinedButton(onClick = onEditAge) {
+                                Text(if (lang == "ar") "تصحيح العمر" else "Correct age")
+                            }
+                        }
+                    }
                     if (privacyOptionsRequired) {
                         item {
                             SettingsPanel {
@@ -267,6 +287,25 @@ internal fun SettingsScreen(
                                 OutlinedButton(onClick = onRequestPlayGamesSignIn) {
                                     Text(tx(lang, if (state.cloudStatus in listOf("synced", "connected", "sync_error"))
                                         "pgs_retry" else "pgs_connect"))
+                                }
+                            }
+
+                            if (playGamesAllowed) {
+                                HorizontalDivider(color = DividerColor)
+                                SettingHeading(
+                                    if (lang == "ar") "تسجيل الخروج أو تغيير حساب Google"
+                                    else "Sign out or change Google account",
+                                    Icons.Rounded.Person
+                                )
+                                Text(
+                                    if (lang == "ar")
+                                        "تسجيل الخروج واختيار حساب Play Games آخر يتمان من إعدادات Google على الجهاز، وليس من داخل اللعبة. افتح الإعدادات ← Google ← خدمات Play Games ← تغيير الحساب للألعاب. بعد التغيير أغلق اللعبة بالكامل وأعد فتحها. بيانات اللعبة المحلية مشتركة حاليًا؛ لا تزامن حسابين مختلفين قبل فصل الحفظ."
+                                    else
+                                        "Google manages Play Games sign-out and account selection in Android settings, not inside this game. Open Settings → Google → Play Games services → Change account for games. Fully close and reopen Za Snake afterward. Local game data is not yet separated by Google account; don't sync different accounts until profiles are isolated.",
+                                    color = Muted, fontSize = 12.sp, lineHeight = 17.sp
+                                )
+                                OutlinedButton(onClick = onChangePlayGamesAccount) {
+                                    Text(if (lang == "ar") "فتح إعدادات حساب Google" else "Open Google account settings")
                                 }
                             }
 
