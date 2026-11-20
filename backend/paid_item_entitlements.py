@@ -14,6 +14,7 @@ from wallet_repository import (
     PREMIUM_ITEM_PRICES, _doc_for, _player_key, _state_from_document,
 )
 from wallet_rules import WalletError, WalletState, spend
+from legacy_ownership import legacy_veto_ref, read_veto_snapshot
 
 
 def _item_price(item_id: str) -> int:
@@ -53,11 +54,15 @@ def decide_paid_item_purchase(state: WalletState, item_id: str):
     return updated, price, False
 
 
-def _purchase_impl(transaction, wallet_ref, item_id):
+def _purchase_impl(transaction, wallet_ref, legacy_ref, item_id):
     """Transaction body separated from the library decorator for offline tests."""
     # Every read comes before writes; no nested transaction or external API.
     snapshot = wallet_ref.get(transaction=transaction)
     state = _state_from_document(snapshot.to_dict() if snapshot.exists else None)
+    legacy_snapshot = legacy_ref.get(transaction=transaction)
+    legacy_owned = read_veto_snapshot(legacy_snapshot)
+    if item_id in legacy_owned:
+        raise WalletError("already_owned_legacy")
     _purchased_paid_item_ids(state)  # fail closed on corrupt item evidence
     updated, charged, already_owned = decide_paid_item_purchase(state, item_id)
     if updated != state:
@@ -71,22 +76,23 @@ def _purchase_impl(transaction, wallet_ref, item_id):
 
 
 @firestore.transactional
-def _purchase(transaction, wallet_ref, item_id):
+def _purchase(transaction, wallet_ref, legacy_ref, item_id):
     # The production entrypoint stays decorated; Firestore manages retries.
-    return _purchase_impl(transaction, wallet_ref, item_id)
+    return _purchase_impl(transaction, wallet_ref, legacy_ref, item_id)
 
 
 def purchase_paid_item_staging(db, authenticated_player_id: str, item_id: str):
     """Internal experimental function: DO NOT call from an open HTTP endpoint.
 
-    Caller must validate Play Games session and resolve any prior/local ownership
-    and mixed free/paid coin rules first. Neither is implemented here.
+    Caller must validate Play Games session. The legacy ownership veto is read
+    within the same atomic wallet transaction, before any coin is spent.
     """
     _item_price(item_id)
     wallet_ref = db.collection("paid_wallets_v1").document(
         _player_key(authenticated_player_id)
     )
-    return _purchase(db.transaction(), wallet_ref, item_id)
+    return _purchase(db.transaction(), wallet_ref,
+                     legacy_veto_ref(db, authenticated_player_id), item_id)
 
 
 def read_paid_item_ids_staging(db, authenticated_player_id: str) -> set[str]:
@@ -111,7 +117,13 @@ def paid_item_wallet_snapshot_staging(db, authenticated_player_id: str) -> dict:
     snapshot = wallet_ref.get()
     state = _state_from_document(snapshot.to_dict() if snapshot.exists else None)
     owned = _purchased_paid_item_ids(state)
+    # A late full refund can leave a negative paid-wallet balance after spending.
+    # Keep evidence in Firestore for retries/audit, but suspend paid ownership
+    # while there is refund debt. Without an allocation ledger we cannot
+    # determine which item was funded by the refunded pack; fail closed.
+    in_debt = state.balance < 0
     return {
         "spendablePaidCoins": max(0, state.balance),
-        "ownedPaidItemIds": sorted(owned),
+        "ownedPaidItemIds": [] if in_debt else sorted(owned),
+        "paidEntitlementsSuspended": in_debt,
     }

@@ -70,6 +70,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     private var lastStatsSaveElapsedMs = 0L
     private var currentSettings = AppSettings()
     private var currentStats = PlayerStats()
+    // Trusted paid entitlements are session-only and must never become free/cloud ownership.
+    private var verifiedPaidItemIds: Set<String> = emptySet()
     private var currentTombstone: RoundTombstone? = null
     private var cloudSyncInProgress = false
     private val audio = GameAudio(application)
@@ -126,6 +128,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 ownedSkinKeys = currentSettings.ownedSkinKeys + currentStats.purchasedSkinKeys,
                 ownedThemeKeys = currentSettings.ownedThemeKeys + currentStats.purchasedThemeKeys + FREE_THEME_KEYS
             )
+            // Do not resurrect paid-only equipment from a local save before server verification.
+            currentSettings = verifiedEquipment(currentSettings)
             settingsRepository.save(currentSettings)
             currentTombstone = localStore.loadRoundTombstone()
             val rawSaved = localStore.loadGame()
@@ -162,6 +166,42 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         mutableUiState.value = mutableUiState.value.copy(stats = currentStats)
     }
 
+    private fun verifiedEquipment(settings: AppSettings): AppSettings = settings.copy(
+        skin = settings.skin.takeIf {
+            it.isFree || it.key in settings.ownedSkinKeys ||
+                ("skin_" + it.key) in verifiedPaidItemIds
+        } ?: SnakeSkin.GREEN,
+        headStyle = settings.headStyle.takeIf {
+            it.isFree || it.key in settings.ownedHeadKeys ||
+                ("head_" + it.key) in verifiedPaidItemIds
+        } ?: SnakeHeadStyle.CLASSIC,
+        bodyType = settings.bodyType.takeIf {
+            it.isFree || it.key in settings.ownedBodyKeys ||
+                ("body_" + it.key) in verifiedPaidItemIds
+        } ?: SnakeBodyType.SEGMENTED,
+        theme = settings.theme.takeIf {
+            it.isFree || it.key in settings.ownedThemeKeys ||
+                ("theme_" + it.key) in verifiedPaidItemIds
+        } ?: GameTheme.NIGHT
+    )
+
+    fun applyVerifiedPaidItemIds(ids: Set<String>) {
+        // The wallet snapshot is supplied only by the authenticated billing gateway.
+        val catalog = (
+            SnakeSkin.entries.filterNot { it.isFree }.map { "skin_" + it.key } +
+            SnakeHeadStyle.entries.filterNot { it.isFree }.map { "head_" + it.key } +
+            SnakeBodyType.entries.filterNot { it.isFree }.map { "body_" + it.key } +
+            GameTheme.entries.filterNot { it.isFree }.map { "theme_" + it.key }
+        ).toSet()
+        verifiedPaidItemIds = ids.intersect(catalog)
+        val safeSettings = verifiedEquipment(currentSettings)
+        if (safeSettings != currentSettings) {
+            currentSettings = safeSettings
+            mutableUiState.value = mutableUiState.value.copy(settings = safeSettings)
+            viewModelScope.launch { settingsRepository.save(safeSettings) }
+        }
+    }
+
     fun setCloudStatus(status: String) {
         mutableUiState.value = mutableUiState.value.copy(cloudStatus = status)
     }
@@ -183,10 +223,16 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun changeSettings(settings: AppSettings) {
-        if (settings.headStyle.key !in (currentSettings.ownedHeadKeys + currentStats.purchasedHeadKeys + FREE_HEAD_KEYS)) return
-        if (settings.bodyType.key !in (currentSettings.ownedBodyKeys + currentStats.purchasedBodyKeys + FREE_BODY_KEYS)) return
+        if (!settings.skin.isFree &&
+            settings.skin.key !in currentSettings.ownedSkinKeys &&
+            ("skin_" + settings.skin.key) !in verifiedPaidItemIds) return
+        if (settings.headStyle.key !in (currentSettings.ownedHeadKeys + currentStats.purchasedHeadKeys + FREE_HEAD_KEYS) &&
+            ("head_" + settings.headStyle.key) !in verifiedPaidItemIds) return
+        if (settings.bodyType.key !in (currentSettings.ownedBodyKeys + currentStats.purchasedBodyKeys + FREE_BODY_KEYS) &&
+            ("body_" + settings.bodyType.key) !in verifiedPaidItemIds) return
         if (settings.theme != currentSettings.theme &&
-            settings.theme.key !in (currentSettings.ownedThemeKeys + currentStats.purchasedThemeKeys + FREE_THEME_KEYS)) return
+            settings.theme.key !in (currentSettings.ownedThemeKeys + currentStats.purchasedThemeKeys + FREE_THEME_KEYS) &&
+            ("theme_" + settings.theme.key) !in verifiedPaidItemIds) return
         val mode = DeviceLanguage.normalizePreference(settings.languageMode)
         val deviceLanguage = DeviceLanguage.fromLocale(getApplication<Application>().resources.configuration.locales[0])
         currentSettings = settings.copy(
@@ -392,7 +438,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun equipSkin(skin: SnakeSkin) {
-        if (skin.key !in currentSettings.ownedSkinKeys) return
+        if (skin.key !in currentSettings.ownedSkinKeys &&
+            ("skin_" + skin.key) !in verifiedPaidItemIds) return
         currentSettings = currentSettings.copy(skin = skin)
         mutableUiState.value = mutableUiState.value.copy(
             settings = currentSettings,
@@ -423,7 +470,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun equipHead(head: SnakeHeadStyle) {
-        if (head.key !in (currentSettings.ownedHeadKeys + currentStats.purchasedHeadKeys + FREE_HEAD_KEYS)) return
+        if (head.key !in (currentSettings.ownedHeadKeys + currentStats.purchasedHeadKeys + FREE_HEAD_KEYS) &&
+            ("head_" + head.key) !in verifiedPaidItemIds) return
         currentSettings = currentSettings.copy(headStyle = head)
         mutableUiState.value = mutableUiState.value.copy(settings = currentSettings,
             toast = if (currentSettings.language == "ar") "تم تجهيز الرأس" else "Head equipped")
@@ -455,7 +503,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun equipBody(body: SnakeBodyType) {
-        if (body.key !in (currentSettings.ownedBodyKeys + currentStats.purchasedBodyKeys + FREE_BODY_KEYS)) return
+        if (body.key !in (currentSettings.ownedBodyKeys + currentStats.purchasedBodyKeys + FREE_BODY_KEYS) &&
+            ("body_" + body.key) !in verifiedPaidItemIds) return
         currentSettings = currentSettings.copy(bodyType = body)
         mutableUiState.value = mutableUiState.value.copy(settings = currentSettings,
             toast = if (currentSettings.language == "ar") "تم تجهيز نوع الجسم" else "Body equipped")

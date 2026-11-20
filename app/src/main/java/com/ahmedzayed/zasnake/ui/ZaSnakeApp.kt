@@ -203,7 +203,8 @@ fun ZaSnakeApp(
     coinPriceCatalog: CoinPriceCatalog?,
     privacyOptionsRequired: Boolean,
     onPrivacyOptions: () -> Unit,
-    onExitApp: () -> Unit
+    onExitApp: () -> Unit,
+    onEditAge: () -> Unit
 ) {
     val modelState by viewModel.uiState
     // Automatic tracks Android changes; manual choices take priority without a restart.
@@ -290,7 +291,9 @@ fun ZaSnakeApp(
                         }
                         viewModel.uiState.value.stats.unlockedAchievements.forEach(playGamesBridge::unlockAchievement)
                     } else {
-                        viewModel.setCloudStatus("offline")
+                        viewModel.setCloudStatus(
+                            if (playGamesBridge.hasChangedAccount()) "account_changed" else "offline"
+                        )
                     }
                 }
             }
@@ -393,6 +396,7 @@ fun ZaSnakeApp(
                                 AppScreen.SETTINGS -> SettingsScreen(state, onBack = viewModel::navigateHomeFromSubscreen,
                                     onSettingsChange = viewModel::changeSettings,
                                     onUpdatePlayerName = viewModel::updatePlayerName,
+                                    onEditAge = onEditAge,
                                     privacyOptionsRequired = privacyOptionsRequired,
                                     onPrivacyOptions = onPrivacyOptions,
                                     playGamesAllowed = playGamesBridge.isAllowedByAge(),
@@ -408,7 +412,10 @@ fun ZaSnakeApp(
                                                     }
                                                     viewModel.uiState.value.stats.unlockedAchievements.forEach(playGamesBridge::unlockAchievement)
                                                 } else {
-                                                    viewModel.setCloudStatus("offline")
+                                                    viewModel.setCloudStatus(
+                                                        if (playGamesBridge.hasChangedAccount()) "account_changed"
+                                                        else "offline"
+                                                    )
                                                 }
                                             }
                                         }

@@ -1,6 +1,7 @@
 package com.ahmedzayed.zasnake
 
 import android.os.Bundle
+import android.content.Intent
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -42,6 +43,7 @@ class MainActivity : ComponentActivity() {
     private var coinPriceCatalog: CoinPriceCatalog? = null
     private var adConsentManager: AdConsentManager? = null
     private var privacyOptionsRequired by mutableStateOf(false)
+    private var correctingAge by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -54,15 +56,24 @@ class MainActivity : ComponentActivity() {
         setContent {
             ZaSnakeTheme {
                 val choice = chosenAge
-                if (choice == null) {
-                    AgeGateScreen { day, month, year ->
-                        val saved = ageRepository.submit(day, month, year)
-                        if (saved == null) false else {
-                            setupAfterAgeGate(saved)
-                            chosenAge = saved
-                            true
-                        }
-                    }
+                if (choice == null || correctingAge) {
+                    AgeGateScreen(
+                        onSubmit = { day, month, year ->
+                            val saved = ageRepository.submit(day, month, year)
+                            if (saved == null) false else {
+                                // Terminate this activity and its game VM; reinitialize the SDKs,
+                                // ad consent, App Check, and child restrictions under the new band.
+                                val launch = Intent(this, MainActivity::class.java).apply {
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                                }
+                                startActivity(launch)
+                                finish()
+                                true
+                            }
+                        },
+                        allowCancel = correctingAge,
+                        onCancel = { correctingAge = false }
+                    )
                 } else {
                     ZaSnakeApp(
                         viewModel = gameViewModel,
@@ -71,7 +82,8 @@ class MainActivity : ComponentActivity() {
                         coinPriceCatalog = coinPriceCatalog,
                         privacyOptionsRequired = privacyOptionsRequired,
                         onPrivacyOptions = { adConsentManager?.showPrivacyOptions(::onConsentResult) },
-                        onExitApp = { finish() }
+                        onExitApp = { finish() },
+                        onEditAge = { correctingAge = true }
                     )
                 }
             }
@@ -83,7 +95,7 @@ class MainActivity : ComponentActivity() {
         // Firebase App Check is exclusively used by the disabled paid-billing
         // gateway. Do not initialize Firebase at all in this no-IAP release.
         // The Debug staging variant retains the experimental configuration.
-        if (decision.band == AgeBand.ADULT && BuildConfig.DEBUG) {
+        if (decision.band == AgeBand.ADULT && (BuildConfig.DEBUG || BuildConfig.BILLING_INTEGRATION_ENABLED)) {
             runCatching {
                 checkNotNull(FirebaseApp.initializeApp(this)) {
                     "Firebase configuration missing"
@@ -102,10 +114,12 @@ class MainActivity : ComponentActivity() {
         // This v4 update does not offer in-app purchases. Only debug builds
         // may inspect the future Billing staging UI; release never creates
         // BillingClient, requests Play prices, or resumes purchase flows.
-        if (decision.band == AgeBand.ADULT && BuildConfig.DEBUG) {
-            coinPriceCatalog = CoinPriceCatalog(this, checkNotNull(playGamesBridge)) { grants ->
-                gameViewModel.applyVerifiedPurchaseGrants(grants)
-            }
+        if (decision.band == AgeBand.ADULT && (BuildConfig.DEBUG || BuildConfig.BILLING_INTEGRATION_ENABLED)) {
+            coinPriceCatalog = CoinPriceCatalog(
+                this, checkNotNull(playGamesBridge),
+                onVerifiedGrants = { grants -> gameViewModel.applyVerifiedPurchaseGrants(grants) },
+                onVerifiedPaidItems = { ids -> gameViewModel.applyVerifiedPaidItemIds(ids) }
+            )
         }
         if (olderUser) {
             rewardedAds = RewardedAds(this, decision.band)

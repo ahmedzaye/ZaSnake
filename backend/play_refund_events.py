@@ -87,12 +87,13 @@ def decode_rtdn_envelope(envelope: dict) -> dict:
     return {"kind": "unsupported_notification"}
 
 
-def validated_voided_digest(item: dict) -> str:
-    """Only after item was obtained via authenticated Play Voided Purchases API.
+def validated_voided_digest(item: dict, *, allow_single_quantity: bool = False) -> str:
+    """Validate Google-verified voids, conservatively handling quantity information.
 
-    We validate and reject quantity-based partial refunds: Za Snake sells only
-    quantity=1 coins packs. A partial refund must trigger investigation, not a
-    guessed credit/debit. Absence of voidedQuantity represents full void.
+    Google may include voidedQuantity=1. This is a complete void ONLY when the
+    original purchase was verified by our server as quantity exactly one.
+    Callers without that invariant must not opt in. Never infer that partial
+    voids of multi-quantity orders are full refunds.
     """
     if not isinstance(item, dict):
         raise RefundEventError("invalid_voided_record")
@@ -101,5 +102,7 @@ def validated_voided_digest(item: dict) -> str:
     if not isinstance(millis, str) or not millis.isascii() or not millis.isdigit() or int(millis) <= 0:
         raise RefundEventError("invalid_voided_time")
     if "voidedQuantity" in item:
-        raise RefundEventError("unsupported_quantity_refund")
+        quantity = item["voidedQuantity"]
+        if not allow_single_quantity or type(quantity) is not int or quantity != 1:
+            raise RefundEventError("unsupported_quantity_refund")
     return digest

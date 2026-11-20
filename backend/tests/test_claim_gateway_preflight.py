@@ -16,10 +16,50 @@ class ClaimGatewayTests(unittest.TestCase):
         cls.client = cls.server.app.test_client()
 
     def setUp(self):
-        self.flag = self.server.ATOMIC_BILLING_ENABLED
+        self.flags = (
+            self.server.ATOMIC_BILLING_ENABLED,
+            self.server.CHECKOUT_VERIFIED_ENABLED,
+            self.server.PAID_SPENDING_ENABLED,
+            self.server.LEGACY_OWNERSHIP_RECONCILED,
+        )
 
     def tearDown(self):
-        self.server.ATOMIC_BILLING_ENABLED = self.flag
+        (self.server.ATOMIC_BILLING_ENABLED,
+         self.server.CHECKOUT_VERIFIED_ENABLED,
+         self.server.PAID_SPENDING_ENABLED,
+         self.server.LEGACY_OWNERSHIP_RECONCILED) = self.flags
+
+    def test_checkout_readiness_fails_closed_and_requires_player(self):
+        self.server.ATOMIC_BILLING_ENABLED = False
+        with patch.object(self.server, "session_player") as auth:
+            disabled = self.client.get("/checkout-ready")
+        self.assertEqual(disabled.status_code, 503)
+        auth.assert_not_called()
+
+        # Atomic billing alone MUST NOT authorize a new checkout.
+        self.server.ATOMIC_BILLING_ENABLED = True
+        with patch.object(self.server, "session_player") as auth:
+            still_disabled = self.client.get("/checkout-ready")
+        self.assertEqual(still_disabled.status_code, 503)
+        auth.assert_not_called()
+
+        self.server.CHECKOUT_VERIFIED_ENABLED = True
+        with patch.object(self.server, "session_player") as auth:
+            spending_disabled = self.client.get("/checkout-ready")
+        self.assertEqual(spending_disabled.status_code, 503)
+        auth.assert_not_called()
+
+        self.server.PAID_SPENDING_ENABLED = True
+        self.server.LEGACY_OWNERSHIP_RECONCILED = True
+        with patch.object(self.server, "session_player", return_value=None):
+            unauthenticated = self.client.get("/checkout-ready")
+        self.assertEqual(unauthenticated.status_code, 401)
+
+        with (patch.object(self.server, "session_player", return_value="player1"),
+              patch.object(self.server, "legacy_registered", return_value=True)):
+            allowed = self.client.get("/checkout-ready")
+        self.assertEqual(allowed.status_code, 200)
+        self.assertEqual(allowed.get_json(), {"checkoutReady": True})
 
     def test_claim_disabled_refuses_before_session(self):
         self.server.ATOMIC_BILLING_ENABLED = False

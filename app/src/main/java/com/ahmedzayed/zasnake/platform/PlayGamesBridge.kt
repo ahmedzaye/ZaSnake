@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Context
 import com.ahmedzayed.zasnake.R
 import com.google.android.gms.games.PlayGames
+import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.games.SnapshotsClient
 import com.google.android.gms.games.snapshot.Snapshot
 import com.google.android.gms.games.snapshot.SnapshotMetadataChange
@@ -19,6 +20,57 @@ sealed class CloudLoadResult {
 class PlayGamesBridge(private val activity: Activity, private val enabled: Boolean = true) {
     private var pendingConflict: SnapshotsClient.SnapshotConflict? = null
     private val snapshotName = "za_snake_progress_v1"
+    // LOCAL guard only. Player IDs from Android are never trusted by the billing
+    // backend. Reject an account change before mixing legacy device data into
+    // another Play Games Saved Games profile.
+    private val accountBinding = activity.getSharedPreferences(
+        "za_snake_pgs_account_binding_v1", Context.MODE_PRIVATE
+    )
+    private var changedAccount = false
+    /** A non-sensitive failure category. No auth tokens or player IDs are logged. */
+    var serverAuthFailureReason = "not_attempted"
+        private set
+    private var accountValidationFailureReason = "not_attempted"
+
+    private fun apiFailure(e: Exception?): String {
+        val status = (e as? ApiException)?.statusCode
+        return if (status == null) "api_error" else "google_status_$status"
+    }
+
+    fun hasChangedAccount(): Boolean = changedAccount
+
+    private fun validateAccountBeforeSync(onResult: (Boolean) -> Unit) {
+        runCatching {
+            PlayGames.getPlayersClient(activity).currentPlayer.addOnCompleteListener { task ->
+                val playerId = if (task.isSuccessful)
+                    task.result?.playerId?.takeIf { it.isNotBlank() } else null
+                if (playerId == null) {
+                    accountValidationFailureReason = "player_profile_" + apiFailure(task.exception)
+                    onResult(false)
+                    return@addOnCompleteListener
+                }
+                val existing = accountBinding.getString("bound_player_id", null)
+                if (existing != null && existing != playerId) {
+                    changedAccount = true
+                    accountValidationFailureReason = "different_google_player"
+                    onResult(false)
+                    return@addOnCompleteListener
+                }
+                if (existing == null &&
+                    !accountBinding.edit().putString("bound_player_id", playerId).commit()) {
+                    accountValidationFailureReason = "local_binding_failed"
+                    onResult(false)
+                    return@addOnCompleteListener
+                }
+                changedAccount = false
+                accountValidationFailureReason = "none"
+                onResult(true)
+            }
+        }.onFailure {
+            accountValidationFailureReason = "player_profile_" + apiFailure(it as? Exception)
+            onResult(false)
+        }
+    }
 
     fun isAllowedByAge(): Boolean = enabled
 
@@ -31,16 +83,34 @@ class PlayGamesBridge(private val activity: Activity, private val enabled: Boole
     /** Request a one-time server auth code. This is NOT the Android OAuth client ID. */
     fun requestServerAuthCode(webClientId: String, onResult: (String?) -> Unit) {
         if (!isConfigured() || !webClientId.endsWith(".apps.googleusercontent.com")) {
+            serverAuthFailureReason = "play_games_configuration_missing"
             onResult(null)
             return
         }
-        runCatching {
-            PlayGames.getGamesSignInClient(activity)
-                .requestServerSideAccess(webClientId, false)
-                .addOnCompleteListener { task ->
-                    onResult(if (task.isSuccessful) task.result?.takeIf(String::isNotBlank) else null)
-                }
-        }.onFailure { onResult(null) }
+        validateAccountBeforeSync { safe ->
+            if (!safe) {
+                serverAuthFailureReason = accountValidationFailureReason
+                onResult(null)
+                return@validateAccountBeforeSync
+            }
+            runCatching {
+                PlayGames.getGamesSignInClient(activity)
+                    .requestServerSideAccess(webClientId, false)
+                    .addOnCompleteListener { task ->
+                        val code = if (task.isSuccessful)
+                            task.result?.takeIf(String::isNotBlank) else null
+                        serverAuthFailureReason = when {
+                            code != null -> "none"
+                            task.isSuccessful -> "empty_server_auth_code"
+                            else -> "server_access_" + apiFailure(task.exception)
+                        }
+                        onResult(code)
+                    }
+            }.onFailure {
+                serverAuthFailureReason = "server_access_" + apiFailure(it as? Exception)
+                onResult(null)
+            }
+        }
     }
 
     fun authenticate(onResult: (Boolean) -> Unit) {
@@ -51,7 +121,9 @@ class PlayGamesBridge(private val activity: Activity, private val enabled: Boole
         runCatching {
             PlayGames.getGamesSignInClient(activity).isAuthenticated
                 .addOnCompleteListener { task ->
-                    onResult(task.isSuccessful && task.result?.isAuthenticated == true)
+                    if (task.isSuccessful && task.result?.isAuthenticated == true) {
+                        validateAccountBeforeSync(onResult)
+                    } else onResult(false)
                 }
         }.onFailure { onResult(false) }
     }
@@ -65,13 +137,15 @@ class PlayGamesBridge(private val activity: Activity, private val enabled: Boole
         runCatching {
             PlayGames.getGamesSignInClient(activity).signIn()
                 .addOnCompleteListener { task ->
-                    onResult(task.isSuccessful && task.result?.isAuthenticated == true)
+                    if (task.isSuccessful && task.result?.isAuthenticated == true) {
+                        validateAccountBeforeSync(onResult)
+                    } else onResult(false)
                 }
         }.onFailure { onResult(false) }
     }
 
     fun unlockAchievement(localAchievementId: String) {
-        if (!isConfigured()) return
+        if (!isConfigured() || changedAccount) return
         val resourceName = when (localAchievementId) {
             "first" -> R.string.pgs_achievement_first
             "apples50" -> R.string.pgs_achievement_apples50
@@ -102,7 +176,7 @@ class PlayGamesBridge(private val activity: Activity, private val enabled: Boole
 
     /** Opens the single Saved Games snapshot with manual conflict detection. */
     fun loadBundle(onResult: (CloudLoadResult) -> Unit) {
-        if (!isConfigured()) {
+        if (!isConfigured() || changedAccount) {
             onResult(CloudLoadResult.Unavailable)
             return
         }
@@ -146,7 +220,7 @@ class PlayGamesBridge(private val activity: Activity, private val enabled: Boole
 
     /** Writes a bundle. A detected conflict is returned rather than silently overwriting a round. */
     fun saveBundle(json: String, onResult: (Boolean) -> Unit) {
-        if (!isConfigured()) {
+        if (!isConfigured() || changedAccount) {
             onResult(false)
             return
         }
@@ -181,6 +255,10 @@ class PlayGamesBridge(private val activity: Activity, private val enabled: Boole
     /** Resolves the platform-level snapshot conflict using the selected base, then commits the
      * app-level merged payload. The game-level UI decides which active round is retained. */
     fun resolvePendingConflict(json: String, chooseServer: Boolean, onResult: (Boolean) -> Unit) {
+        if (changedAccount) {
+            onResult(false)
+            return
+        }
         val conflict = pendingConflict
         if (conflict == null) {
             saveBundle(json, onResult)

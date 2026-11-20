@@ -98,14 +98,26 @@ class VoidedReconciliationTests(unittest.TestCase):
         self.assertEqual(result["applied"], 0)
         revoke.assert_not_called()
 
-    def test_rejects_partial_and_does_not_write(self):
-        partial = {**VOIDED, "voidedQuantity": 1}
-        session = play_session({"voidedPurchases": [partial]})
+    def test_single_unit_void_is_a_full_refund_for_single_unit_products(self):
+        voided = {**VOIDED, "voidedQuantity": 1}
+        session = play_session({"voidedPurchases": [voided]})
         db = firestore_with_purchase()
         with patch("voided_reconciliation.revoke_authoritatively_verified_purchase") as revoke:
-            with self.assertRaises(RefundEventError):
-                reconcile_window(db, session, START, NOW, NOW, dry_run=False)
-        revoke.assert_not_called()
+            result = reconcile_window(db, session, START, NOW, NOW, dry_run=False)
+        self.assertEqual(result["verified_full_refunds"], 1)
+        self.assertEqual(result["applied"], 1)
+        revoke.assert_called_once_with(db, DIGEST, PLAYER, PRODUCT, ACCOUNT, 1000)
+
+    def test_rejects_unsupported_quantity_and_does_not_write(self):
+        for quantity in (0, 2, -1, "1", True, None):
+            with self.subTest(quantity=quantity):
+                invalid = {**VOIDED, "voidedQuantity": quantity}
+                session = play_session({"voidedPurchases": [invalid]})
+                with patch("voided_reconciliation.revoke_authoritatively_verified_purchase") as revoke:
+                    with self.assertRaises(RefundEventError):
+                        reconcile_window(firestore_with_purchase(), session,
+                                         START, NOW, NOW, dry_run=False)
+                revoke.assert_not_called()
 
     def test_no_write_on_corrupt_purchase(self):
         db = firestore_with_purchase(value={**PURCHASE, "accountId": "wrong"})

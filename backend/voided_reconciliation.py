@@ -74,7 +74,7 @@ def fetch_voided_purchases(session, start_ms: int, end_ms: int,
             raise ReconciliationError("invalid_play_response")
         # Validate every record before any future apply step.
         for row in rows:
-            validated_voided_digest(row)
+            validated_voided_digest(row, allow_single_quantity=True)
         result.extend(rows)
         pagination = page.get("tokenPagination") or {}
         if not isinstance(pagination, dict):
@@ -123,7 +123,7 @@ def reconcile_window(db, session, start_ms: int, end_ms: int, now_ms: int,
     unmatched = 0
     deduped = set()
     for record in records:
-        digest = validated_voided_digest(record)
+        digest = validated_voided_digest(record, allow_single_quantity=True)
         if digest in deduped:
             continue
         deduped.add(digest)

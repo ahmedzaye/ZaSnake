@@ -102,6 +102,7 @@ internal fun SettingsScreen(
     onBack: () -> Unit,
     onSettingsChange: (AppSettings) -> Unit,
     onUpdatePlayerName: (String) -> Boolean,
+    onEditAge: () -> Unit,
     privacyOptionsRequired: Boolean,
     onPrivacyOptions: () -> Unit,
     playGamesAllowed: Boolean,
@@ -234,6 +235,24 @@ internal fun SettingsScreen(
                             Text(tx(lang, "player_name_local_hint"), color = Muted, fontSize = 12.sp)
                         }
                     }
+                    item {
+                        SettingsPanel {
+                            SettingHeading(
+                                if (lang == "ar") "بياناتي الشخصية والعمر" else "Personal details and age",
+                                Icons.Rounded.Person
+                            )
+                            Text(
+                                if (lang == "ar")
+                                    "تعديل الاسم متاح بالأعلى. لتصحيح تاريخ الميلاد، أعد إدخاله في شاشة التحقق من العمر. لا نحتفظ بتاريخ ميلادك الكامل."
+                                else
+                                    "Edit your local name above. To correct your birth date, enter it again on the age verification screen. Your full birth date is not stored.",
+                                color = Muted, fontSize = 12.sp, lineHeight = 17.sp
+                            )
+                            OutlinedButton(onClick = onEditAge) {
+                                Text(if (lang == "ar") "تصحيح العمر" else "Correct age")
+                            }
+                        }
+                    }
                     if (privacyOptionsRequired) {
                         item {
                             SettingsPanel {
@@ -259,11 +278,21 @@ internal fun SettingsScreen(
                                 when {
                                     !playGamesAllowed -> tx(lang, "pgs_child_local")
                                     !playGamesConfigured -> tx(lang, "pgs_config_needed")
+                                    else -> (when (state.cloudStatus) {
+                                    "account_changed" -> if (lang == "ar")
+                                        "تم اكتشاف حساب Google مختلف. أوقفنا المزامنة والشراء لحماية تقدم حسابك السابق. أعد اختيار الحساب القديم من إعدادات Google."
+                                    else
+                                        "A different Google account was detected. Cloud sync and billing are blocked to protect the previous account's progress. Re-select the original account in Google settings."
+                                    "account_change_pending" -> if (lang == "ar")
+                                        "تم إيقاف مزامنة Google والمدفوعات مؤقتًا. أغلق اللعبة بالكامل وأعد فتحها بعد تغيير حساب Play Games."
+                                    else
+                                        "Google sync and paid purchases are paused. Fully close and reopen the game after changing the Play Games account."
                                     else -> cloudStatusLabel(state.cloudStatus, lang)
+                                })
                                 }, color = Muted, fontSize = 12.sp, lineHeight = 17.sp
                             )
                             if (playGamesAllowed && playGamesConfigured &&
-                                state.cloudStatus !in listOf("checking", "syncing", "conflict")) {
+                                state.cloudStatus !in listOf("checking", "syncing", "conflict", "account_changed", "account_change_pending")) {
                                 OutlinedButton(onClick = onRequestPlayGamesSignIn) {
                                     Text(tx(lang, if (state.cloudStatus in listOf("synced", "connected", "sync_error"))
                                         "pgs_retry" else "pgs_connect"))
@@ -321,7 +350,17 @@ internal fun SettingsScreen(
                             }
                             HorizontalDivider(color = DividerColor)
                             SettingHeading(tx(lang, "cloud_sync_title"), Icons.Rounded.CloudOff)
-                            Text(if (playGamesAllowed) cloudStatusLabel(state.cloudStatus, lang)
+                            Text(if (playGamesAllowed) (when (state.cloudStatus) {
+                                    "account_changed" -> if (lang == "ar")
+                                        "تم اكتشاف حساب Google مختلف. أوقفنا المزامنة والشراء لحماية تقدم حسابك السابق. أعد اختيار الحساب القديم من إعدادات Google."
+                                    else
+                                        "A different Google account was detected. Cloud sync and billing are blocked to protect the previous account's progress. Re-select the original account in Google settings."
+                                    "account_change_pending" -> if (lang == "ar")
+                                        "تم إيقاف مزامنة Google والمدفوعات مؤقتًا. أغلق اللعبة بالكامل وأعد فتحها بعد تغيير حساب Play Games."
+                                    else
+                                        "Google sync and paid purchases are paused. Fully close and reopen the game after changing the Play Games account."
+                                    else -> cloudStatusLabel(state.cloudStatus, lang)
+                                })
                                 else tx(lang, "pgs_child_local"),
                                 color = Muted, fontSize = 12.sp, lineHeight = 17.sp)
                             Text(tx(lang, "cloud_local_name"), color = Muted, fontSize = 11.sp)

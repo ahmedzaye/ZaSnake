@@ -22,6 +22,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -59,7 +60,11 @@ private data class WheelChoice(val value: Int?, val title: String)
 
 /** Neutral, mandatory first-run age screen: no suggested birth date and no skip control. */
 @Composable
-fun AgeGateScreen(onSubmit: (day: Int, month: Int, year: Int) -> Boolean) {
+fun AgeGateScreen(
+    onSubmit: (day: Int, month: Int, year: Int) -> Boolean,
+    allowCancel: Boolean = false,
+    onCancel: () -> Unit = {}
+) {
     val arabic = DeviceLanguage.fromLocale(LocalConfiguration.current.locales[0]) == "ar"
     var day by rememberSaveable { mutableStateOf<Int?>(null) }
     var month by rememberSaveable { mutableStateOf<Int?>(null) }
@@ -82,7 +87,10 @@ fun AgeGateScreen(onSubmit: (day: Int, month: Int, year: Int) -> Boolean) {
     val dateComplete = day != null && month != null && year != null
     val valid = dateComplete && AgePolicy.classify(day!!, month!!, year!!) != null
 
-    BackHandler(enabled = true) { /* No age-gate bypass with the system back gesture. */ }
+    BackHandler(enabled = true) {
+        // The first-run age screen cannot be skipped; an account edit can be cancelled.
+        if (allowCancel) onCancel()
+    }
     Box(
         Modifier.fillMaxSize().background(Playform.Cream).safeDrawingPadding().padding(20.dp),
         contentAlignment = Alignment.Center
@@ -153,6 +161,11 @@ fun AgeGateScreen(onSubmit: (day: Int, month: Int, year: Int) -> Boolean) {
                 shape = RoundedCornerShape(15.dp)
             ) {
                 Text(if (arabic) "متابعة" else "Continue", fontWeight = FontWeight.Bold)
+            }
+            if (allowCancel) {
+                TextButton(onClick = onCancel) {
+                    Text(if (arabic) "إلغاء التعديل" else "Cancel editing")
+                }
             }
         }
     }

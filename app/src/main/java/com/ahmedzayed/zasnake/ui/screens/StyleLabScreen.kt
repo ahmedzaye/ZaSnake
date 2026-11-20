@@ -66,7 +66,11 @@ internal fun StyleLabItemCard(
     modifier: Modifier = Modifier,
     preview: @Composable () -> Unit,
     onPreview: () -> Unit,
-    onAction: () -> Unit
+    onAction: () -> Unit,
+    paidBalance: Int? = null,
+    paidWalletLoading: Boolean = false,
+    legacyOwnershipLoaded: Boolean = false,
+    onPaidAction: (() -> Unit)? = null
 ) {
     val ar = language == "ar"
     Column(
@@ -109,6 +113,16 @@ internal fun StyleLabItemCard(
                 else -> "🪙 $price"
             }, fontWeight = FontWeight.Bold, fontSize = 12.sp)
         }
+        if (!owned && price > 0 && paidBalance != null && onPaidAction != null) {
+            OutlinedButton(
+                onClick = onPaidAction,
+                enabled = legacyOwnershipLoaded && paidBalance >= price && !paidWalletLoading,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp)
+            ) {
+                Text(if (ar) "شراء برصيد مدفوع" else "Use purchased coins",
+                    fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            }
+        }
     }
 }
 
@@ -129,12 +143,50 @@ internal fun ShopScreen(
     val lang = state.settings.language
     val coinPriceState = coinPriceCatalog?.state
     val playPrices = coinPriceCatalog?.localizedPrices.orEmpty()
+    val paidBalance = coinPriceCatalog?.paidWalletCoins
+    val paidOwned = coinPriceCatalog?.paidOwnedItemIds.orEmpty()
+    val paidWalletLoading = coinPriceCatalog?.paidWalletLoading == true
+    // Before spending real-money coins, let Play Games finish restoring
+    // previous purchases made with earned/free coins on another device.
+    // These legacy items remain locally/cloud owned; they are never re-billed
+    // or promoted into the paid-only wallet.
+    val cloudOwnershipLoaded = state.cloudStatus == "synced"
+    val legacyOwnershipLoaded = cloudOwnershipLoaded &&
+        coinPriceCatalog?.legacyOwnershipReady == true
+    // Only after Play Games has merged existing saves may the app register a
+    // persistent, additive spending veto. Never derive paid grants from it.
+    val legacyItemIds = (
+        state.settings.ownedSkinKeys.filter { key ->
+            SnakeSkin.entries.any { !it.isFree && it.key == key }
+        }.map { "skin_" + it } +
+        state.stats.purchasedSkinKeys.map { "skin_" + it } +
+        state.settings.ownedHeadKeys.filter { key ->
+            SnakeHeadStyle.entries.any { !it.isFree && it.key == key }
+        }.map { "head_" + it } +
+        state.stats.purchasedHeadKeys.map { "head_" + it } +
+        state.settings.ownedBodyKeys.filter { key ->
+            SnakeBodyType.entries.any { !it.isFree && it.key == key }
+        }.map { "body_" + it } +
+        state.stats.purchasedBodyKeys.map { "body_" + it } +
+        state.settings.ownedThemeKeys.filter { key ->
+            GameTheme.entries.any { !it.isFree && it.key == key }
+        }.map { "theme_" + it } +
+        state.stats.purchasedThemeKeys.map { "theme_" + it }
+    ).toSet()
+    LaunchedEffect(cloudOwnershipLoaded, legacyItemIds, coinPriceCatalog) {
+        if (cloudOwnershipLoaded) {
+            coinPriceCatalog?.reportLegacyOwnership(legacyItemIds)
+        }
+    }
+    var pendingPaidItem by remember { mutableStateOf<Triple<String, String, Int>?>(null) }
     val prices = SnakeSkin.entries.associateWith { it.priceCoins }
     var previewSkin by remember(state.settings.skin) { mutableStateOf(state.settings.skin) }
     var pendingBuy by remember { mutableStateOf<SnakeSkin?>(null) }
     var tab by remember { mutableStateOf("skins") }
     LaunchedEffect(tab, coinPriceCatalog) {
-        if (tab == "coins") coinPriceCatalog?.refresh()
+        // Authenticate on entering the shop, not only on the coin-pack tab.
+        coinPriceCatalog?.refresh()
+        coinPriceCatalog?.refreshPaidWallet()
     }
     var snakeTab by remember { mutableStateOf("colors") }
     var previewHead by remember(state.settings.headStyle) { mutableStateOf(state.settings.headStyle) }
@@ -157,7 +209,7 @@ internal fun ShopScreen(
             ChoiceChip(tx(lang, "shop_skins"), tab == "skins") { tab = "skins" }
             ChoiceChip(tx(lang, "shop_themes"), tab == "themes") { tab = "themes" }
             // Keep paid coin packages visible only in debug, as in release v4.
-            if (com.ahmedzayed.zasnake.BuildConfig.DEBUG) {
+            if (com.ahmedzayed.zasnake.BuildConfig.DEBUG || com.ahmedzayed.zasnake.BuildConfig.BILLING_INTEGRATION_ENABLED) {
                 ChoiceChip(tx(lang, "shop_coins"), tab == "coins") { tab = "coins" }
             }
         }
@@ -175,6 +227,10 @@ internal fun ShopScreen(
                     modifier = Modifier.weight(1f))
                 Text("🪙 ${state.stats.coins}", color = Playform.Gold,
                     fontSize = 15.sp, fontWeight = FontWeight.Black)
+                if (paidBalance != null) {
+                    Text((if (lang == "ar") "مدفوعة: " else "Paid: ") + paidBalance,
+                        color = Playform.Gold, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
             }
             if (tab != "coins") {
                 Box(Modifier.fillMaxWidth()
@@ -212,7 +268,8 @@ internal fun ShopScreen(
                     items(normalSkins.chunked(columns)) { group ->
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             group.forEach { skin ->
-                                val owned = skin.isFree || skin.key in state.settings.ownedSkinKeys
+                                val owned = skin.isFree || skin.key in state.settings.ownedSkinKeys ||
+                                    ("skin_" + skin.key) in paidOwned
                                 StyleLabItemCard(tx(lang, skin.key), previewSkin == skin,
                                     owned, state.settings.skin == skin, skin.priceCoins,
                                     state.stats.coins, lang, Modifier.weight(1f),
@@ -224,6 +281,12 @@ internal fun ShopScreen(
                                     onAction = {
                                         if (owned) onEquip(skin)
                                         else { previewSkin = skin; pendingBuy = skin }
+                                    },
+                                    paidBalance = paidBalance, paidWalletLoading = paidWalletLoading,
+                                    legacyOwnershipLoaded = legacyOwnershipLoaded,
+                                    onPaidAction = {
+                                        pendingPaidItem = Triple("skin_" + skin.key,
+                                            tx(lang, skin.key), skin.priceCoins)
                                     })
                             }
                             repeat(columns - group.size) { Spacer(Modifier.weight(1f)) }
@@ -236,7 +299,8 @@ internal fun ShopScreen(
                     items(ARAB_COLLECTION.chunked(columns)) { group ->
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             group.forEach { skin ->
-                                val owned = skin.isFree || skin.key in state.settings.ownedSkinKeys
+                                val owned = skin.isFree || skin.key in state.settings.ownedSkinKeys ||
+                                    ("skin_" + skin.key) in paidOwned
                                 StyleLabItemCard(tx(lang, skin.key), previewSkin == skin,
                                     owned, state.settings.skin == skin, skin.priceCoins,
                                     state.stats.coins, lang, Modifier.weight(1f),
@@ -248,6 +312,12 @@ internal fun ShopScreen(
                                     onAction = {
                                         if (owned) onEquip(skin)
                                         else { previewSkin = skin; pendingBuy = skin }
+                                    },
+                                    paidBalance = paidBalance, paidWalletLoading = paidWalletLoading,
+                                    legacyOwnershipLoaded = legacyOwnershipLoaded,
+                                    onPaidAction = {
+                                        pendingPaidItem = Triple("skin_" + skin.key,
+                                            tx(lang, skin.key), skin.priceCoins)
                                     })
                             }
                             repeat(columns - group.size) { Spacer(Modifier.weight(1f)) }
@@ -258,7 +328,8 @@ internal fun ShopScreen(
                     items(SnakeHeadStyle.entries.toList().chunked(columns)) { group ->
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             group.forEach { head ->
-                                val owned = head.isFree || head.key in state.settings.ownedHeadKeys
+                                val owned = head.isFree || head.key in state.settings.ownedHeadKeys ||
+                                    ("head_" + head.key) in paidOwned
                                 StyleLabItemCard(tx(lang, "head_${head.key}"), previewHead == head,
                                     owned, state.settings.headStyle == head, head.priceCoins,
                                     state.stats.coins, lang, Modifier.weight(1f),
@@ -269,6 +340,12 @@ internal fun ShopScreen(
                                     onPreview = { previewHead = head },
                                     onAction = {
                                         if (owned) onEquipHead(head) else pendingHeadBuy = head
+                                    },
+                                    paidBalance = paidBalance, paidWalletLoading = paidWalletLoading,
+                                    legacyOwnershipLoaded = legacyOwnershipLoaded,
+                                    onPaidAction = {
+                                        pendingPaidItem = Triple("head_" + head.key,
+                                            tx(lang, "head_" + head.key), head.priceCoins)
                                     })
                             }
                             repeat(columns - group.size) { Spacer(Modifier.weight(1f)) }
@@ -279,7 +356,8 @@ internal fun ShopScreen(
                     items(SnakeBodyType.entries.toList().chunked(columns)) { group ->
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             group.forEach { body ->
-                                val owned = body.isFree || body.key in state.settings.ownedBodyKeys
+                                val owned = body.isFree || body.key in state.settings.ownedBodyKeys ||
+                                    ("body_" + body.key) in paidOwned
                                 StyleLabItemCard(tx(lang, "body_${body.key}"), previewBody == body,
                                     owned, state.settings.bodyType == body, body.priceCoins,
                                     state.stats.coins, lang, Modifier.weight(1f),
@@ -291,6 +369,12 @@ internal fun ShopScreen(
                                     onPreview = { previewBody = body },
                                     onAction = {
                                         if (owned) onEquipBody(body) else pendingBodyBuy = body
+                                    },
+                                    paidBalance = paidBalance, paidWalletLoading = paidWalletLoading,
+                                    legacyOwnershipLoaded = legacyOwnershipLoaded,
+                                    onPaidAction = {
+                                        pendingPaidItem = Triple("body_" + body.key,
+                                            tx(lang, "body_" + body.key), body.priceCoins)
                                     })
                             }
                             repeat(columns - group.size) { Spacer(Modifier.weight(1f)) }
@@ -302,7 +386,8 @@ internal fun ShopScreen(
                 items(GameTheme.entries.filterNot { it.isFree }.chunked(columns)) { group ->
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         group.forEach { theme ->
-                            val owned = theme.key in state.settings.ownedThemeKeys
+                            val owned = theme.key in state.settings.ownedThemeKeys ||
+                                ("theme_" + theme.key) in paidOwned
                             StyleLabItemCard(themeTitle(theme, lang), previewTheme == theme,
                                 owned, state.settings.theme == theme, theme.priceCoins,
                                 state.stats.coins, lang, Modifier.weight(1f),
@@ -313,6 +398,11 @@ internal fun ShopScreen(
                                 onAction = {
                                     if (owned) onApplyTheme(theme)
                                     else pendingThemeBuy = theme
+                                },
+                                paidBalance = paidBalance, paidWalletLoading = paidWalletLoading,
+                                onPaidAction = {
+                                    pendingPaidItem = Triple("theme_" + theme.key,
+                                        themeTitle(theme, lang), theme.priceCoins)
                                 })
                         }
                         repeat(columns - group.size) { Spacer(Modifier.weight(1f)) }
@@ -322,6 +412,28 @@ internal fun ShopScreen(
                     color = Playform.TextSecondary, fontSize = 12.sp) }
             } else if (tab == "coins") {
                 item { PlayformSectionTitle(tx(lang, "coin_shop_title"), tx(lang, "coin_shop_info")) }
+                if (coinPriceCatalog != null) {
+                    item {
+                        PlayformCard {
+                            Text(
+                                if (paidBalance == null)
+                                    if (lang == "ar") "الرصيد المدفوع غير متاح حتى يتصل بالخادم"
+                                    else "Paid wallet unavailable until server connection"
+                                else if (lang == "ar") "رصيد العملات المدفوعة: " + paidBalance
+                                else "Purchased coin balance: " + paidBalance,
+                                color = Playform.Ink, fontWeight = FontWeight.Bold
+                            )
+                            if (coinPriceCatalog.paidWalletStatus.isNotEmpty()) {
+                                Text(coinPriceCatalog.paidWalletStatus,
+                                    color = Playform.TextSecondary, fontSize = 12.sp)
+                            }
+                            OutlinedButton(
+                                onClick = { coinPriceCatalog.refreshPaidWallet() },
+                                enabled = !paidWalletLoading
+                            ) { Text(if (lang == "ar") "تحديث الرصيد" else "Refresh balance") }
+                        }
+                    }
+                }
                 if (coinPriceCatalog != null && coinPriceState == CoinPriceCatalog.State.UNAVAILABLE) {
                     item {
                         OutlinedButton(onClick = { coinPriceCatalog.refresh() }) {
@@ -456,6 +568,38 @@ internal fun ShopScreen(
             containerColor = Panel,
             titleContentColor = PrimaryText,
             textContentColor = PrimaryText
+        )
+    }
+
+    pendingPaidItem?.let { pending ->
+        AlertDialog(
+            onDismissRequest = { pendingPaidItem = null },
+            title = { Text(if (lang == "ar") "تأكيد استخدام العملات المدفوعة"
+                else "Confirm purchased-coin spend") },
+            text = {
+                Text(
+                    if (lang == "ar")
+                        "شراء " + pending.second + " مقابل " + pending.third +
+                            " عملة مدفوعة؟ سيؤكد الخادم عملية الشراء قبل فتح العنصر."
+                    else "Buy " + pending.second + " for " + pending.third +
+                        " purchased coins? The server must confirm ownership first."
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = paidBalance != null && paidBalance >= pending.third &&
+                        !paidWalletLoading && legacyOwnershipLoaded,
+                    onClick = {
+                        coinPriceCatalog?.buyPaidItem(pending.first)
+                        pendingPaidItem = null
+                    }
+                ) { Text(if (lang == "ar") "تأكيد الصرف" else "Spend purchased coins") }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingPaidItem = null }) {
+                    Text(if (lang == "ar") "إلغاء" else "Cancel")
+                }
+            }
         )
     }
 }
