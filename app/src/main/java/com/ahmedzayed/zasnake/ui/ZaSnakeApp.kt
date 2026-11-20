@@ -397,16 +397,6 @@ fun ZaSnakeApp(
                                     onSettingsChange = viewModel::changeSettings,
                                     onUpdatePlayerName = viewModel::updatePlayerName,
                                     onEditAge = onEditAge,
-                                    onChangePlayGamesAccount = {
-                                        playGamesBridge.pauseForAccountChange()
-                                        viewModel.setCloudStatus("account_change_pending")
-                                        coinPriceCatalog?.pauseForAccountChange()
-                                        // PGS v2 owns sign-out/account choice in Android's settings.
-                                        // This action never fakes an SDK sign-out.
-                                        activity?.startActivity(android.content.Intent(
-                                            android.provider.Settings.ACTION_SETTINGS
-                                        ))
-                                    },
                                     privacyOptionsRequired = privacyOptionsRequired,
                                     onPrivacyOptions = onPrivacyOptions,
                                     playGamesAllowed = playGamesBridge.isAllowedByAge(),
