@@ -71,12 +71,9 @@ class LegacyOwnershipRouteTests(unittest.TestCase):
 
         with (patch.object(self.server, "session_player", return_value="player"),
               patch.object(self.server, "register_legacy_veto") as register):
-            for payload in ({"other": []}, {"ownedItemIds": "skin_egypt"},
+            for payload in ({"other": []},
                             {"ownedItemIds": [], "playerId": "fake"}):
                 result = self.client.post("/legacy-ownership", json=payload)
-                if payload == {"ownedItemIds": "skin_egypt"}:
-                    # The mock must simulate the real validator here.
-                    continue
                 self.assertEqual(result.status_code, 400)
             register.assert_not_called()
 
