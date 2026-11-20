@@ -80,6 +80,8 @@ class CoinPriceCatalog(
     // Server kill switch is separate from the paid cosmetics wallet.
     // Never open Google Play checkout without an authenticated readiness reply.
     private var checkoutReady by mutableStateOf(false)
+    private var pendingLegacyOwnership: Set<String>? = null
+    private var lastSubmittedLegacyOwnership: Pair<String, Set<String>>? = null
     private var accountHash: String? = null
     private var authBusy = false
     private var processing = false
@@ -216,6 +218,7 @@ class CoinPriceCatalog(
                         loadGrants()
                         resumePendingPurchases()
                         refreshPaidWallet()
+                        submitLegacyOwnershipIfReady()
                         refreshCheckoutReadiness()
                     } else {
                         sessionToken = null
@@ -224,6 +227,41 @@ class CoinPriceCatalog(
                         onVerifiedGrants(emptyMap())
                         statusMessage = "Billing server authentication unavailable."
                     }
+                }
+            }
+        }
+    }
+
+    /** The Play Games cloud merge completed; register legacy unlocks as a
+     * server-side spend VETO only. This cannot mint paid coins or paid items.
+     * An empty set is meaningful for a new player after successful cloud sync.
+     */
+    fun reportLegacyOwnership(itemIds: Set<String>) {
+        if (closed || !stagingEnabled) return
+        if (!itemIds.all { it in allowedPaidItemIds }) return
+        pendingLegacyOwnership = itemIds.toSet()
+        if (sessionValid) submitLegacyOwnershipIfReady() else ensureSession()
+    }
+
+    private fun submitLegacyOwnershipIfReady() {
+        val session = sessionToken ?: return
+        val ids = pendingLegacyOwnership ?: return
+        if (!sessionValid || lastSubmittedLegacyOwnership == (session to ids)) return
+        worker.execute {
+            val array = org.json.JSONArray()
+            ids.sorted().forEach(array::put)
+            val reply = runCatching {
+                postJson("/legacy-ownership",
+                    JSONObject().put("ownedItemIds", array), session)
+            }.getOrNull()
+            activity.runOnUiThread {
+                if (closed || sessionToken != session) return@runOnUiThread
+                if (reply?.optBoolean("legacyOwnershipReady", false) == true) {
+                    lastSubmittedLegacyOwnership = session to ids
+                    refreshCheckoutReadiness()
+                } else {
+                    checkoutReady = false
+                    statusMessage = "Previous ownership sync unavailable; checkout paused."
                 }
             }
         }
@@ -495,6 +533,8 @@ class CoinPriceCatalog(
         sessionExpiresAtMillis = 0L
         accountHash = null
         checkoutReady = false
+        pendingLegacyOwnership = null
+        lastSubmittedLegacyOwnership = null
         worker.shutdownNow()
         client.endConnection()
     }
