@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Context
 import com.ahmedzayed.zasnake.R
 import com.google.android.gms.games.PlayGames
+import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.games.SnapshotsClient
 import com.google.android.gms.games.snapshot.Snapshot
 import com.google.android.gms.games.snapshot.SnapshotMetadataChange
@@ -27,6 +28,15 @@ class PlayGamesBridge(private val activity: Activity, private val enabled: Boole
     )
     private var changedAccount = false
     private var accountChangePending = false
+    /** A non-sensitive failure category. No auth tokens or player IDs are logged. */
+    var serverAuthFailureReason = "not_attempted"
+        private set
+    private var accountValidationFailureReason = "not_attempted"
+
+    private fun apiFailure(e: Exception?): String {
+        val status = (e as? ApiException)?.statusCode
+        return if (status == null) "api_error" else "google_status_$status"
+    }
 
     /** Freeze all Play Games operations before Android's account switch UI.
      * A full app restart is required to bind a new platform identity.
@@ -40,6 +50,7 @@ class PlayGamesBridge(private val activity: Activity, private val enabled: Boole
 
     private fun validateAccountBeforeSync(onResult: (Boolean) -> Unit) {
         if (accountChangePending) {
+            accountValidationFailureReason = "account_change_pending"
             onResult(false)
             return
         }
@@ -48,24 +59,31 @@ class PlayGamesBridge(private val activity: Activity, private val enabled: Boole
                 val playerId = if (task.isSuccessful)
                     task.result?.playerId?.takeIf { it.isNotBlank() } else null
                 if (playerId == null) {
+                    accountValidationFailureReason = "player_profile_" + apiFailure(task.exception)
                     onResult(false)
                     return@addOnCompleteListener
                 }
                 val existing = accountBinding.getString("bound_player_id", null)
                 if (existing != null && existing != playerId) {
                     changedAccount = true
+                    accountValidationFailureReason = "different_google_player"
                     onResult(false)
                     return@addOnCompleteListener
                 }
                 if (existing == null &&
                     !accountBinding.edit().putString("bound_player_id", playerId).commit()) {
+                    accountValidationFailureReason = "local_binding_failed"
                     onResult(false)
                     return@addOnCompleteListener
                 }
                 changedAccount = false
+                accountValidationFailureReason = "none"
                 onResult(true)
             }
-        }.onFailure { onResult(false) }
+        }.onFailure {
+            accountValidationFailureReason = "player_profile_" + apiFailure(it as? Exception)
+            onResult(false)
+        }
     }
 
     fun isAllowedByAge(): Boolean = enabled
@@ -79,11 +97,13 @@ class PlayGamesBridge(private val activity: Activity, private val enabled: Boole
     /** Request a one-time server auth code. This is NOT the Android OAuth client ID. */
     fun requestServerAuthCode(webClientId: String, onResult: (String?) -> Unit) {
         if (!isConfigured() || !webClientId.endsWith(".apps.googleusercontent.com")) {
+            serverAuthFailureReason = "play_games_configuration_missing"
             onResult(null)
             return
         }
         validateAccountBeforeSync { safe ->
             if (!safe) {
+                serverAuthFailureReason = accountValidationFailureReason
                 onResult(null)
                 return@validateAccountBeforeSync
             }
@@ -91,9 +111,19 @@ class PlayGamesBridge(private val activity: Activity, private val enabled: Boole
                 PlayGames.getGamesSignInClient(activity)
                     .requestServerSideAccess(webClientId, false)
                     .addOnCompleteListener { task ->
-                        onResult(if (task.isSuccessful) task.result?.takeIf(String::isNotBlank) else null)
+                        val code = if (task.isSuccessful)
+                            task.result?.takeIf(String::isNotBlank) else null
+                        serverAuthFailureReason = when {
+                            code != null -> "none"
+                            task.isSuccessful -> "empty_server_auth_code"
+                            else -> "server_access_" + apiFailure(task.exception)
+                        }
+                        onResult(code)
                     }
-            }.onFailure { onResult(null) }
+            }.onFailure {
+                serverAuthFailureReason = "server_access_" + apiFailure(it as? Exception)
+                onResult(null)
+            }
         }
     }
 
