@@ -29,7 +29,11 @@ class PaidItemEmulatorTests(unittest.TestCase):
         self.player = "paid-item-test-" + uuid.uuid4().hex
         self.ref = self.db.collection("paid_wallets_v1").document(_player_key(self.player))
         self.ref.set({"grants": {"a" * 64: 1000}, "spends": {}, "revoked": {}})
+        from legacy_ownership import legacy_veto_ref, register_legacy_veto
+        self.legacy_ref = legacy_veto_ref(self.db, self.player)
+        register_legacy_veto(self.db, self.player, [])
         self.addCleanup(self.ref.delete)
+        self.addCleanup(self.legacy_ref.delete)
 
     def test_paid_spend_atomic_duplicate_and_ownership(self):
         first = purchase_paid_item_staging(self.db, self.player, "skin_egypt")
