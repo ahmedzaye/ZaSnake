@@ -291,7 +291,9 @@ fun ZaSnakeApp(
                         }
                         viewModel.uiState.value.stats.unlockedAchievements.forEach(playGamesBridge::unlockAchievement)
                     } else {
-                        viewModel.setCloudStatus("offline")
+                        viewModel.setCloudStatus(
+                            if (playGamesBridge.hasChangedAccount()) "account_changed" else "offline"
+                        )
                     }
                 }
             }
@@ -417,7 +419,10 @@ fun ZaSnakeApp(
                                                     }
                                                     viewModel.uiState.value.stats.unlockedAchievements.forEach(playGamesBridge::unlockAchievement)
                                                 } else {
-                                                    viewModel.setCloudStatus("offline")
+                                                    viewModel.setCloudStatus(
+                                                        if (playGamesBridge.hasChangedAccount()) "account_changed"
+                                                        else "offline"
+                                                    )
                                                 }
                                             }
                                         }
