@@ -543,6 +543,23 @@ class CoinPriceCatalog(
         }
     }
 
+    /** Drop all authenticated state before opening Android account settings.
+     * A different Play Games player must never reuse another player's wallet.
+     */
+    fun pauseForAccountChange() {
+        sessionToken = null
+        sessionExpiresAtMillis = 0L
+        accountHash = null
+        checkoutReady = false
+        legacyOwnershipReady = false
+        lastSubmittedLegacyOwnership = null
+        paidWalletCoins = null
+        paidOwnedItemIds = emptySet()
+        paidWalletStatus = "Reconnect Play Games to verify your paid wallet."
+        onVerifiedGrants(emptyMap())
+        onVerifiedPaidItems(emptySet())
+    }
+
     fun close() {
         closed = true
         requestVersion++
