@@ -150,7 +150,9 @@ internal fun ShopScreen(
     // previous purchases made with earned/free coins on another device.
     // These legacy items remain locally/cloud owned; they are never re-billed
     // or promoted into the paid-only wallet.
-    val legacyOwnershipLoaded = state.cloudStatus == "synced"
+    val cloudOwnershipLoaded = state.cloudStatus == "synced"
+    val legacyOwnershipLoaded = cloudOwnershipLoaded &&
+        coinPriceCatalog?.legacyOwnershipReady == true
     // Only after Play Games has merged existing saves may the app register a
     // persistent, additive spending veto. Never derive paid grants from it.
     val legacyItemIds = (
@@ -171,8 +173,8 @@ internal fun ShopScreen(
         }.map { "theme_" + it } +
         state.stats.purchasedThemeKeys.map { "theme_" + it }
     ).toSet()
-    LaunchedEffect(legacyOwnershipLoaded, legacyItemIds, coinPriceCatalog) {
-        if (legacyOwnershipLoaded) {
+    LaunchedEffect(cloudOwnershipLoaded, legacyItemIds, coinPriceCatalog) {
+        if (cloudOwnershipLoaded) {
             coinPriceCatalog?.reportLegacyOwnership(legacyItemIds)
         }
     }
